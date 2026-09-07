@@ -251,6 +251,7 @@ class _BasketballTeamSearchScreenState extends State<BasketballTeamSearchScreen>
                               ),
                               Text(
                                 '#${team.ranking ?? 'N/A'}',
+                                maxLines: 1,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFFE65100),

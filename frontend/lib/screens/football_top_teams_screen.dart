@@ -167,17 +167,22 @@ class _FootballTopTeamsScreenState extends State<FootballTopTeamsScreen> {
                               borderRadius: 20,
                               child: ListTile(
                                 leading: SizedBox(
-                                  width: 75,
+                                  width: 90,
                                   child: Row(
                                     children: [
                                       SizedBox(
-                                        width: 30,
-                                        child: Text(
-                                          '#${team.ranking}',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.bold,
-                                            color: Color(0xFFE4405F),
+                                        width: 44,
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(
+                                            '#${team.ranking}',
+                                            maxLines: 1,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFFE4405F),
+                                            ),
                                           ),
                                         ),
                                       ),
