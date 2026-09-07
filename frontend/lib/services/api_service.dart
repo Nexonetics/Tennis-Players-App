@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart'
 import '../models/player.dart';
 import '../models/tt_player.dart';
 import '../models/football_national_team.dart';
+import '../models/basketball_national_team.dart';
 import '../models/basketball_club.dart';
 import '../widgets/ranking_graph.dart';
 
@@ -45,7 +46,9 @@ class ApiService {
   static Map<String, dynamic>? _localTtHistories;
   static Map<String, dynamic>? _localTennisHistories;
   static Map<String, dynamic>? _localFootballHistories;
+  static Map<String, dynamic>? _localBasketballHistories;
   static List<FootballNationalTeam>? _localFootballTeams;
+  static List<BasketballNationalTeam>? _localBasketballTeams;
   static List<BasketballClub>? _localBasketballClubs;
 
   static Future<void> _loadLocalDataIfNeeded() async {
@@ -71,12 +74,27 @@ class ApiService {
       _localFootballTeams =
           decoded.map((item) => FootballNationalTeam.fromJson(item)).toList();
     }
+    if (_localBasketballTeams == null) {
+      try {
+        final jsonStr = await rootBundle
+            .loadString('assets/data/basketball_national_teams.json');
+        final List decoded = json.decode(jsonStr);
+        _localBasketballTeams =
+            decoded.map((item) => BasketballNationalTeam.fromJson(item)).toList();
+      } catch (_) {
+        _localBasketballTeams = [];
+      }
+    }
     if (_localBasketballClubs == null) {
-      final jsonStr =
-          await rootBundle.loadString('assets/data/basketball_clubs.json');
-      final List decoded = json.decode(jsonStr);
-      _localBasketballClubs =
-          decoded.map((item) => BasketballClub.fromJson(item)).toList();
+      try {
+        final jsonStr =
+            await rootBundle.loadString('assets/data/basketball_clubs.json');
+        final List decoded = json.decode(jsonStr);
+        _localBasketballClubs =
+            decoded.map((item) => BasketballClub.fromJson(item)).toList();
+      } catch (_) {
+        _localBasketballClubs = [];
+      }
     }
   }
 
@@ -105,6 +123,18 @@ class ApiService {
         _localFootballHistories = json.decode(jsonStr) as Map<String, dynamic>;
       } catch (_) {
         _localFootballHistories = {};
+      }
+    }
+  }
+
+  static Future<void> _loadBasketballHistoriesIfNeeded() async {
+    if (_localBasketballHistories == null) {
+      try {
+        final jsonStr = await rootBundle
+            .loadString('assets/data/basketball_team_histories.json');
+        _localBasketballHistories = json.decode(jsonStr) as Map<String, dynamic>;
+      } catch (_) {
+        _localBasketballHistories = {};
       }
     }
   }
@@ -962,5 +992,170 @@ class ApiService {
         throw Exception('Failed to load top basketball clubs');
       }
     }
+  }
+
+  // ── Basketball National Teams ──────────────────────────────────────────────
+
+  Future<BasketballNationalTeamListResponse> getBasketballTeams({
+    int page = 1,
+    int size = 20,
+    String? category,
+  }) async {
+    return _tryRemote<BasketballNationalTeamListResponse>(
+      () async {
+        final categoryParam = category != null ? '&category=$category' : '';
+        final response = await http.get(
+          Uri.parse(
+              '$baseUrl/basketball-national-teams/?page=$page&size=$size$categoryParam'),
+        );
+        if (response.statusCode == 200) {
+          return BasketballNationalTeamListResponse.fromJson(
+              json.decode(response.body));
+        }
+        throw Exception('Failed to load basketball national teams');
+      },
+      () async {
+        await _loadLocalDataIfNeeded();
+        var list = _localBasketballTeams ?? [];
+        if (category != null) {
+          list = list.where((p) => p.category == category).toList();
+        }
+        list.sort((a, b) {
+          if (a.ranking == null && b.ranking == null) return 0;
+          if (a.ranking == null) return 1;
+          if (b.ranking == null) return -1;
+          return a.ranking!.compareTo(b.ranking!);
+        });
+
+        final total = list.length;
+        final start = (page - 1) * size;
+        if (start >= total) {
+          return BasketballNationalTeamListResponse(
+              items: [], total: total, page: page, size: size);
+        }
+        final end = (start + size).clamp(0, total);
+        final items = list.sublist(start, end);
+        return BasketballNationalTeamListResponse(
+            items: items, total: total, page: page, size: size);
+      },
+    );
+  }
+
+  Future<BasketballNationalTeamListResponse> searchBasketballTeams(
+    String query, {
+    int page = 1,
+    int size = 20,
+    String? category,
+  }) async {
+    return _tryRemote<BasketballNationalTeamListResponse>(
+      () async {
+        final categoryParam = category != null ? '&category=$category' : '';
+        final response = await http.get(
+          Uri.parse(
+            '$baseUrl/basketball-national-teams/search?q=$query&page=$page&size=$size$categoryParam',
+          ),
+        );
+        if (response.statusCode == 200) {
+          return BasketballNationalTeamListResponse.fromJson(
+              json.decode(response.body));
+        }
+        throw Exception('Failed to search basketball teams');
+      },
+      () async {
+        await _loadLocalDataIfNeeded();
+        final q = query.toLowerCase();
+        var list = (_localBasketballTeams ?? []).where((p) {
+          final nameMatch = p.name.toLowerCase().contains(q);
+          final countryMatch = p.country?.toLowerCase().contains(q) ?? false;
+          return nameMatch || countryMatch;
+        }).toList();
+
+        if (category != null) {
+          list = list.where((p) => p.category == category).toList();
+        }
+
+        list.sort((a, b) {
+          if (a.ranking == null && b.ranking == null) return 0;
+          if (a.ranking == null) return 1;
+          if (b.ranking == null) return -1;
+          return a.ranking!.compareTo(b.ranking!);
+        });
+
+        final total = list.length;
+        final start = (page - 1) * size;
+        if (start >= total) {
+          return BasketballNationalTeamListResponse(
+              items: [], total: total, page: page, size: size);
+        }
+        final end = (start + size).clamp(0, total);
+        final items = list.sublist(start, end);
+        return BasketballNationalTeamListResponse(
+            items: items, total: total, page: page, size: size);
+      },
+    );
+  }
+
+  Future<BasketballNationalTeam> getBasketballTeamDetail(int id) async {
+    return _tryRemote<BasketballNationalTeam>(
+      () async {
+        final response =
+            await http.get(Uri.parse('$baseUrl/basketball-national-teams/$id'));
+        if (response.statusCode == 200) {
+          return BasketballNationalTeam.fromJson(json.decode(response.body));
+        }
+        throw Exception('Failed to load basketball team details');
+      },
+      () async => _getBasketballTeamDetailLocal(id),
+    );
+  }
+
+  Future<BasketballNationalTeam> _getBasketballTeamDetailLocal(int id) async {
+    await _loadLocalDataIfNeeded();
+    await _loadBasketballHistoriesIfNeeded();
+    final base = (_localBasketballTeams ?? []).firstWhere(
+      (p) => p.id == id,
+      orElse: () => throw Exception('Basketball team not found'),
+    );
+    final rawHistory = _localBasketballHistories?[id.toString()];
+    List<RankingPoint>? history;
+    if (rawHistory != null) {
+      history = (rawHistory as List)
+          .map((item) => RankingPoint(
+                ranking: item['ranking'] as int,
+                date: DateTime.parse(item['date'] as String),
+              ))
+          .toList();
+    }
+    return BasketballNationalTeam(
+      id: base.id,
+      name: base.name,
+      country: base.country,
+      confederation: base.confederation,
+      foundedYear: base.foundedYear,
+      stadium: base.stadium,
+      manager: base.manager,
+      nickname: base.nickname,
+      imageUrl: base.imageUrl,
+      website: base.website,
+      description: base.description,
+      ranking: base.ranking,
+      category: base.category,
+      rankingHistory: history ?? base.rankingHistory,
+      highestRanking: base.highestRanking,
+      highestRankingDate: base.highestRankingDate,
+      totalTrophies: base.totalTrophies,
+      worldCupTitles: base.worldCupTitles,
+      captain: base.captain,
+      mainRivals: base.mainRivals,
+      honors: base.honors,
+    );
+  }
+
+  Future<BasketballNationalTeamListResponse> getBasketballTopTeams({
+    int page = 1,
+    int size = 20,
+    String? category,
+  }) async {
+    return getBasketballTeams(page: page, size: size, category: category);
   }
 }

@@ -4,7 +4,7 @@ import hashlib
 from fastapi import FastAPI, Response, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import players, tt_players, football_national_teams, basketball_clubs, auth, users, chat
+from app.api.endpoints import players, tt_players, football_national_teams, basketball_national_teams, basketball_clubs, auth, users, chat
 from app.db.session import engine, Base
 import app.models  # Import models to ensure they are registered with Base metadata
 import uvicorn
@@ -92,6 +92,7 @@ app.include_router(chat.router, prefix="/chat", tags=["Chat"])
 app.include_router(players.router, prefix="/players", tags=["Players"])
 app.include_router(tt_players.router, prefix="/tt-players", tags=["Table Tennis"])
 app.include_router(football_national_teams.router, prefix="/football-national-teams", tags=["Football National Teams"])
+app.include_router(basketball_national_teams.router, prefix="/basketball-national-teams", tags=["Basketball National Teams"])
 app.include_router(basketball_clubs.router, prefix="/basketball-clubs", tags=["Basketball Clubs"])
 
 

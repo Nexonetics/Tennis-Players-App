@@ -121,6 +121,29 @@ def export_football_national_teams(base_url, session):
             histories[str(tid)] = hist
     write_json(os.path.join(OUT_DIR, 'football_team_histories.json'), histories)
 
+def export_basketball_national_teams(base_url, session):
+    url = urljoin(base_url, '/basketball-national-teams/')
+    items_m = paged_fetch(session, url, params={'category': 'men'})
+    items_w = paged_fetch(session, url, params={'category': 'women'})
+    items = items_m + items_w
+    if not items:
+        items = paged_fetch(session, url)
+    write_json(os.path.join(OUT_DIR, 'basketball_national_teams.json'), items)
+
+    histories = {}
+    for team in items:
+        tid = team.get('id')
+        if not tid:
+            continue
+        r = session.get(urljoin(base_url, f'/basketball-national-teams/{tid}'), timeout=30)
+        if r.status_code != 200:
+            continue
+        detail = r.json()
+        hist = detail.get('ranking_history')
+        if hist:
+            histories[str(tid)] = hist
+    write_json(os.path.join(OUT_DIR, 'basketball_team_histories.json'), histories)
+
 def export_generic_list(base_path, out_name, base_url, session):
     url = urljoin(base_url, base_path)
     items = paged_fetch(session, url)
@@ -139,6 +162,8 @@ def main():
     export_tt_players(args.base, session)
     print('Exporting football national teams...')
     export_football_national_teams(args.base, session)
+    print('Exporting basketball national teams...')
+    export_basketball_national_teams(args.base, session)
     print('Exporting basketball clubs...')
     export_generic_list('/basketball-clubs/', 'basketball_clubs.json', args.base, session)
 

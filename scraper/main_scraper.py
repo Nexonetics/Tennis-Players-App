@@ -15,7 +15,7 @@ from scrapers.atp_scraper import ATPScraper
 from scrapers.wta_scraper import WTAScraper
 from scrapers.wtt_scraper import WTTScraper
 from scrapers.football_national_team_scraper import FootballNationalTeamScraper
-from scrapers.basketball_club_scraper import BasketballClubScraper
+from scrapers.basketball_national_team_scraper import BasketballNationalTeamScraper
 from utils.logger import log
 
 def run_atp():
@@ -53,9 +53,9 @@ def run_football_scraper():
     fb.scrape_all()
 
 def run_basketball_scraper():
-    log.info("Starting Basketball Club Scraper...")
-    bb = BasketballClubScraper()
-    bb.scrape_clubs(limit=1000)
+    log.info("Starting Basketball National Team Scraper...")
+    bb = BasketballNationalTeamScraper()
+    bb.scrape_all()
 
 def main():
     parser = argparse.ArgumentParser(description="Multi-Sport Web Scraper")
