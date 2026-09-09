@@ -17,8 +17,9 @@ class ATPScraper(BaseScraper):
         super().__init__("https://en.wikipedia.org/wiki/ATP_rankings")
         self.wiki = WikiScraper()
 
-    def scrape_rankings(self, limit=500):
-        log.info(f"Scraping ATP rankings from official site (limit {limit})...")
+    def scrape_rankings(self, limit=None, start_rank=1):
+        limit_desc = f"limit {limit}" if limit is not None else "all available"
+        log.info(f"Scraping ATP rankings from official site (from rank {start_rank}, {limit_desc})...")
         
         db = SessionLocal()
         existing_names = set()
@@ -34,10 +35,13 @@ class ATPScraper(BaseScraper):
         log.info(f"Loaded {len(existing_names)} existing players from DB. Existing players will skip slow page enrichment.")
 
         players_scraped = 0
+        start_offset = ((start_rank - 1) // 100) * 100
+        max_bound = start_offset + limit if limit is not None else 3500
+        consecutive_empty = 0
+
         # ATP uses segments of 100 for rankRange (e.g. 1-100, 101-200)
-        # We'll fetch segments until we reach the limit
-        for start in range(0, limit, 100):
-            if players_scraped >= limit:
+        for start in range(start_offset, max_bound, 100):
+            if limit is not None and players_scraped >= limit:
                 break
             
             range_str = f"{start + 1}-{start + 100}"
@@ -46,17 +50,32 @@ class ATPScraper(BaseScraper):
             
             soup = self.get_soup_playwright(url)
             if not soup:
-                log.error(f"Failed to load ATP rankings segment {range_str}")
+                log.warning(f"Failed to load ATP rankings segment {range_str}")
+                consecutive_empty += 1
+                if consecutive_empty >= 2:
+                    log.info("No more ATP segments reachable. Stopping ATP scrape.")
+                    break
                 continue
 
             table = soup.select_one("table.rankings-table") or soup.select_one("table")
             if not table:
-                log.error(f"Could not find rankings table in segment {range_str}")
+                log.info(f"No table found in segment {range_str}. Stopping ATP scrape.")
+                consecutive_empty += 1
+                if consecutive_empty >= 2:
+                    break
                 continue
 
             rows = table.select("tbody tr")
+            if not rows:
+                log.info(f"No rows in segment {range_str}. Stopping ATP scrape.")
+                consecutive_empty += 1
+                if consecutive_empty >= 2:
+                    break
+                continue
+
+            consecutive_empty = 0
             for row in rows:
-                if players_scraped >= limit:
+                if limit is not None and players_scraped >= limit:
                     break
                 
                 try:
@@ -70,6 +89,9 @@ class ATPScraper(BaseScraper):
                     rank_text = rank_cell.text.strip().replace("T", "")
                     if not rank_text.isdigit(): continue
                     ranking = int(rank_text)
+
+                    if ranking < start_rank:
+                        continue
 
                     # Get name and profile URL
                     player_url_path = player_link.get("href", "")
@@ -134,8 +156,8 @@ class ATPScraper(BaseScraper):
                             for key, val in wiki_data.items():
                                 if not player_data.get(key):
                                     player_data[key] = val
-                        # Only launch Playwright browser profile if still missing key data
-                        if (not player_data.get("birth_date") or is_priority) and player_url_path:
+                        # Only launch Playwright browser profile if priority or top 200
+                        if (is_priority or (ranking <= 200 and not player_data.get("birth_date"))) and player_url_path:
                             self.enrich_from_atp(full_profile_url, player_data)
                         existing_names.add(name.lower())
                     else:
