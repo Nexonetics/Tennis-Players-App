@@ -21,6 +21,18 @@ class PlayerService:
                 ).first()
                 if latest_r:
                     rank = latest_r.rank
+            # Fallback 1: most recent ranking for this player if not in latest global snapshot
+            if rank is None:
+                recent_r = db.query(TennisHistoricalRanking).filter(
+                    TennisHistoricalRanking.player_id == p.id,
+                    TennisHistoricalRanking.rank > 0
+                ).order_by(
+                    TennisHistoricalRanking.ranking_year.desc(),
+                    TennisHistoricalRanking.ranking_month.desc(),
+                    TennisHistoricalRanking.ranking_date.desc()
+                ).first()
+                if recent_r:
+                    rank = recent_r.rank
         
         # Try to match with old Player to get style, weight, height, wins, losses, turned_pro, image_url, etc.
         full_name = f"{p.first_name} {p.last_name}"
@@ -46,6 +58,9 @@ class PlayerService:
             legacy_image = old_p.image_url
             if not prize_money:
                 prize_money = old_p.prize_money
+            # Fallback 2: legacy table ranking
+            if rank is None and old_p.ranking:
+                rank = old_p.ranking
         
         # Calculate birth date if components exist
         b_date = None

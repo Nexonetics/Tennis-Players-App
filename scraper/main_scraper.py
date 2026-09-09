@@ -21,14 +21,14 @@ from utils.logger import log
 def run_atp():
     try:
         atp = ATPScraper()
-        atp.scrape_rankings(limit=1000)
+        atp.scrape_rankings(limit=500)
     except Exception as e:
         log.error(f"ATP Scraper failed: {e}")
 
 def run_wta():
     try:
         wta = WTAScraper()
-        wta.scrape_rankings(limit=1000)
+        wta.scrape_rankings(limit=500)
     except Exception as e:
         log.error(f"WTA Scraper failed: {e}")
 
@@ -45,7 +45,7 @@ def run_tennis_scraper(parallel=True):
 def run_tt_scraper():
     log.info("Starting Table Tennis Scraper...")
     wtt = WTTScraper()
-    wtt.scrape_rankings(limit=1000)
+    wtt.scrape_rankings(limit=500)
 
 def run_football_scraper():
     log.info("Starting Football National Team Scraper...")

@@ -22,6 +22,18 @@ class TtPlayerService:
                 ).first()
                 if latest_r:
                     rank = latest_r.rank
+            # Fallback 1: most recent ranking for this player if not in latest global snapshot
+            if rank is None:
+                recent_r = db.query(TableTennisHistoricalRanking).filter(
+                    TableTennisHistoricalRanking.player_id == p.id,
+                    TableTennisHistoricalRanking.rank > 0
+                ).order_by(
+                    TableTennisHistoricalRanking.ranking_year.desc(),
+                    TableTennisHistoricalRanking.ranking_month.desc(),
+                    TableTennisHistoricalRanking.ranking_date.desc()
+                ).first()
+                if recent_r:
+                    rank = recent_r.rank
         
         # Try to match with old TableTennisPlayer to get style, weight, and win %
         full_name = f"{p.first_name} {p.last_name}"
@@ -36,6 +48,9 @@ class TtPlayerService:
             style = old_p.playing_style
             win_pct = old_p.win_percentage
             weight = old_p.weight
+            # Fallback 2: legacy table ranking
+            if rank is None and old_p.ranking:
+                rank = old_p.ranking
         
         # Calculate birth date if components exist
         b_date = None

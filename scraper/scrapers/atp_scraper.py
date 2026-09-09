@@ -5,7 +5,10 @@ from datetime import datetime, timedelta
 from scraper.base_scraper import BaseScraper
 from scraper.utils.logger import log
 from scraper.persistence import save_player
+from scraper.historical_persistence import save_tennis_player_with_rank
 from scraper.scrapers.wiki_scraper import WikiScraper
+from app.db.session import SessionLocal
+from app.models.player import Player, TennisHistoricalPlayer
 
 WIKI_SUMMARY_API = "https://en.wikipedia.org/api/rest_v1/page/summary/"
 
@@ -14,9 +17,22 @@ class ATPScraper(BaseScraper):
         super().__init__("https://en.wikipedia.org/wiki/ATP_rankings")
         self.wiki = WikiScraper()
 
-    def scrape_rankings(self, limit=1500):
+    def scrape_rankings(self, limit=500):
         log.info(f"Scraping ATP rankings from official site (limit {limit})...")
         
+        db = SessionLocal()
+        existing_names = set()
+        try:
+            for row in db.query(Player.name).all():
+                if row[0]: existing_names.add(row[0].strip().lower())
+            for p in db.query(TennisHistoricalPlayer.first_name, TennisHistoricalPlayer.last_name).all():
+                existing_names.add(f"{p[0]} {p[1]}".strip().lower())
+        except Exception as e:
+            log.warning(f"Could not load existing players cache: {e}")
+        finally:
+            db.close()
+        log.info(f"Loaded {len(existing_names)} existing players from DB. Existing players will skip slow page enrichment.")
+
         players_scraped = 0
         # ATP uses segments of 100 for rankRange (e.g. 1-100, 101-200)
         # We'll fetch segments until we reach the limit
@@ -73,7 +89,6 @@ class ATPScraper(BaseScraper):
                             # or is shorter than the slug name
                             if "." in name or len(name) < len(name_from_slug):
                                 name = name_from_slug
-                                log.info(f"Using full name from slug: {name}")
                         except (ValueError, IndexError):
                             pass
 
@@ -84,36 +99,47 @@ class ATPScraper(BaseScraper):
                         country_match = flag_use.get("href").split("#flag-")
                         if len(country_match) > 1:
                             country = country_match[1].upper()
-                    
-                    log.info(f"Found {name} (Rank {ranking}). Enriching...")
-                    
+
+                    # Extract points from table row if available
+                    points = 0
+                    points_cell = row.select_one("td.points") or row.select_one(".points")
+                    if points_cell:
+                        try:
+                            p_clean = re.sub(r"\D", "", points_cell.text.strip())
+                            if p_clean: points = int(p_clean)
+                        except Exception:
+                            pass
+
                     # Initial data
                     player_data = {
                         "name": name,
                         "ranking": ranking,
+                        "points": points,
                         "gender": "M",
                         "country": country,
                         "source": "ATP Tour"
                     }
 
-                    # Enrichment Strategy:
-                    # 1. Try ATP Profile directly for accuracy (especially for specific requests)
-                    # 2. Fallback to Wikipedia
-                    full_profile_url = f"https://www.atptour.com{player_url_path}" if player_url_path.startswith("/") else player_url_path
-                    
-                    # To keep pictures and full profiles for a good range, we enrich top 1000 
-                    # OR for the specifically requested players: Svyatoslav Gulin and Denis Klok
+                    # Check if player already exists in DB
+                    is_existing = name.lower() in existing_names
                     priority_players = ["Gulin", "Klok", "Svyatoslav", "Denis"]
-                    if ranking <= 1000 or any(p.lower() in name.lower() for p in priority_players):
-                        self.enrich_from_atp(full_profile_url, player_data)
-                    
-                    # If we still lack key data, try Wikipedia (only for top 1000 to keep it fast)
-                    if ranking <= 1000 and (not player_data.get("height") or not player_data.get("birth_date")):
+                    is_priority = any(p.lower() in name.lower() for p in priority_players)
+
+                    if not is_existing or is_priority:
+                        log.info(f"New player or priority: {name} (Rank {ranking}). Enriching...")
+                        full_profile_url = f"https://www.atptour.com{player_url_path}" if player_url_path.startswith("/") else player_url_path
+                        # Try fast Wikipedia REST API first (<0.2s)
                         wiki_data = self.wiki.enrich_player(name)
                         if wiki_data:
                             for key, val in wiki_data.items():
                                 if not player_data.get(key):
                                     player_data[key] = val
+                        # Only launch Playwright browser profile if still missing key data
+                        if (not player_data.get("birth_date") or is_priority) and player_url_path:
+                            self.enrich_from_atp(full_profile_url, player_data)
+                        existing_names.add(name.lower())
+                    else:
+                        log.debug(f"Player {name} already exists in DB. Skipping page enrichment.")
 
                     # Final sanitization
                     if player_data.get("highest_ranking"):
@@ -124,9 +150,15 @@ class ATPScraper(BaseScraper):
                         player_data["highest_ranking"] = ranking
 
                     save_player(player_data)
+                    # Dual-write: ensure this player+rank lands in historical tables
+                    save_tennis_player_with_rank(player_data)
                     players_scraped += 1
+                    if players_scraped % 50 == 0:
+                        log.info(f"ATP Progress: {players_scraped}/{limit} players saved.")
                 except Exception as e:
                     log.error(f"Error parsing ATP player row: {e}")
+
+        return players_scraped
 
     def enrich_from_atp(self, url, player_data):
         log.info(f"Enriching {player_data['name']} from ATP profile...")
