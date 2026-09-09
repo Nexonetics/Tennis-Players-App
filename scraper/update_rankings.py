@@ -192,7 +192,7 @@ def check_duplicate_ranks():
         db.close()
 
 
-def scrape_new_tennis_rankings(limit_per_gender=500):
+def scrape_new_tennis_rankings(limit_per_gender=500, start_rank=1, parallel=False):
     """Scrape latest tennis rankings from ATP and WTA."""
     log.info('\n' + '='*60)
     log.info('SCRAPING NEW TENNIS RANKINGS')
@@ -202,21 +202,33 @@ def scrape_new_tennis_rankings(limit_per_gender=500):
         from scrapers.atp_scraper import ATPScraper
         from scrapers.wta_scraper import WTAScraper
         
-        today = date.today()
+        limit_desc = f"limit: {limit_per_gender}" if limit_per_gender is not None else "all available"
+
+        def run_atp():
+            log.info(f'\n📊 Scraping ATP Rankings (from rank {start_rank}, {limit_desc})...')
+            atp_scraper = ATPScraper()
+            atp_count = atp_scraper.scrape_rankings(limit=limit_per_gender, start_rank=start_rank)
+            log.info(f'✅ ATP: Scraped {atp_count} male players')
+            return atp_count
+
+        def run_wta():
+            log.info(f'\n📊 Scraping WTA Rankings (from rank {start_rank}, {limit_desc})...')
+            wta_scraper = WTAScraper()
+            wta_count = wta_scraper.scrape_rankings(limit=limit_per_gender, start_rank=start_rank)
+            log.info(f'✅ WTA: Scraped {wta_count} female players')
+            return wta_count
+
+        if parallel:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=2) as executor:
+                f_atp = executor.submit(run_atp)
+                f_wta = executor.submit(run_wta)
+                f_atp.result()
+                f_wta.result()
+        else:
+            run_atp()
+            run_wta()
         
-        # Scrape ATP (Men)
-        log.info(f'\n📊 Scraping ATP Rankings (limit: {limit_per_gender})...')
-        atp_scraper = ATPScraper()
-        atp_count = atp_scraper.scrape_rankings(limit=limit_per_gender)
-        log.info(f'✅ ATP: Scraped {atp_count} male players')
-        
-        # Scrape WTA (Women)
-        log.info(f'\n📊 Scraping WTA Rankings (limit: {limit_per_gender})...')
-        wta_scraper = WTAScraper()
-        wta_count = wta_scraper.scrape_rankings(limit=limit_per_gender)
-        log.info(f'✅ WTA: Scraped {wta_count} female players')
-        
-        # Note: The scrapers save directly to database via persistence modules
         log.info(f'\n✅ Tennis rankings updated successfully!')
         return True
         
@@ -227,7 +239,7 @@ def scrape_new_tennis_rankings(limit_per_gender=500):
         return False
 
 
-def scrape_new_tt_rankings(limit_per_gender=500):
+def scrape_new_tt_rankings(limit_per_gender=500, start_rank=1):
     """Scrape latest table tennis rankings from WTT."""
     log.info('\n' + '='*60)
     log.info('SCRAPING NEW TABLE TENNIS RANKINGS')
@@ -236,9 +248,10 @@ def scrape_new_tt_rankings(limit_per_gender=500):
     try:
         from scrapers.wtt_scraper import WTTScraper
         
-        log.info(f'\n🏓 Scraping WTT Rankings (limit: {limit_per_gender} per gender)...')
+        limit_desc = f"limit: {limit_per_gender}" if limit_per_gender is not None else "all available"
+        log.info(f'\n🏓 Scraping WTT Rankings (from rank {start_rank}, {limit_desc} per gender)...')
         wtt_scraper = WTTScraper()
-        wtt_scraper.scrape_rankings(limit=limit_per_gender)
+        wtt_scraper.scrape_rankings(limit=limit_per_gender, start_rank=start_rank)
         log.info(f'✅ Table tennis rankings updated successfully!')
         return True
         
@@ -305,6 +318,12 @@ def main():
                         help='Number of players to scrape per gender for tennis (default: 500)')
     parser.add_argument('--tt-limit', type=int, default=500,
                         help='Number of players to scrape per gender for table tennis (default: 500)')
+    parser.add_argument('--start-rank', type=int, default=1,
+                        help='Starting rank to scrape from (default: 1)')
+    parser.add_argument('--all-ranks', action='store_true',
+                        help='Scrape all remaining ranks without limit')
+    parser.add_argument('--parallel', action='store_true',
+                        help='Run tennis (ATP, WTA) and table tennis scrapers in parallel')
     parser.add_argument('--sources', action='store_true',
                         help='Show data source information')
     
@@ -332,22 +351,53 @@ def main():
     scrape_tt = args.table_tennis or not specific_selected
     scrape_fb = args.football or not specific_selected
     
+    tennis_limit = None if args.all_ranks else args.tennis_limit
+    tt_limit = None if args.all_ranks else args.tt_limit
+
     success = True
     
-    # Scrape tennis rankings
-    if scrape_tennis:
-        if not scrape_new_tennis_rankings(limit_per_gender=args.tennis_limit):
-            success = False
-    
-    # Scrape table tennis rankings
-    if scrape_tt:
-        if not scrape_new_tt_rankings(limit_per_gender=args.tt_limit):
-            success = False
+    if args.parallel:
+        from concurrent.futures import ThreadPoolExecutor
+        log.info("⚡ Running scrapers concurrently in parallel mode...")
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            futures = {}
+            if scrape_tennis:
+                futures['tennis'] = executor.submit(
+                    scrape_new_tennis_rankings, 
+                    limit_per_gender=tennis_limit, 
+                    start_rank=args.start_rank, 
+                    parallel=True
+                )
+            if scrape_tt:
+                futures['tt'] = executor.submit(
+                    scrape_new_tt_rankings, 
+                    limit_per_gender=tt_limit, 
+                    start_rank=args.start_rank
+                )
+            if scrape_fb:
+                futures['fb'] = executor.submit(scrape_new_football_rankings)
+            
+            for name, f in futures.items():
+                try:
+                    res = f.result()
+                    if not res:
+                        success = False
+                except Exception as e:
+                    log.error(f"Task {name} raised exception: {e}")
+                    success = False
+    else:
+        # Sequential execution
+        if scrape_tennis:
+            if not scrape_new_tennis_rankings(limit_per_gender=tennis_limit, start_rank=args.start_rank):
+                success = False
+        
+        if scrape_tt:
+            if not scrape_new_tt_rankings(limit_per_gender=tt_limit, start_rank=args.start_rank):
+                success = False
 
-    # Scrape football rankings
-    if scrape_fb:
-        if not scrape_new_football_rankings():
-            success = False
+        if scrape_fb:
+            if not scrape_new_football_rankings():
+                success = False
     
     # Final status check
     if success:

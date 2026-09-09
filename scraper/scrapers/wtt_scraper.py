@@ -61,10 +61,11 @@ class WTTScraper(BaseScraper):
             "Accept": "application/json",
         })
 
-    def scrape_rankings(self, limit=1000):
+    def scrape_rankings(self, limit=None, start_rank=1):
         """Scrape both men's and women's TT rankings across Senior and Youth categories."""
         from concurrent.futures import ThreadPoolExecutor
-        log.info(f"Starting WTT table tennis scraping (limit {limit} per gender)...")
+        limit_desc = f"limit {limit}" if limit is not None else "all available"
+        log.info(f"Starting WTT table tennis scraping (from rank {start_rank}, {limit_desc} per gender)...")
 
         db = SessionLocal()
         existing_names = set()
@@ -81,13 +82,14 @@ class WTTScraper(BaseScraper):
         log.info(f"Loaded {len(existing_names)} existing table tennis players from DB.")
 
         def run_scrape(tab_name, gender, category):
-            return self._scrape_gender(tab_name, gender, limit, category)
+            return self._scrape_gender(tab_name, gender, limit, category, start_rank)
 
         total_men = 0
         total_women = 0
 
-        # Primary categories
-        for category in ["SENIOR", "YOUTH"]:
+        # Primary categories (Youth only goes up to ~250)
+        categories = ["SENIOR"] if start_rank > 300 else ["SENIOR", "YOUTH"]
+        for category in categories:
             log.info(f"Scraping {category} rankings in parallel...")
             with ThreadPoolExecutor(max_workers=2) as executor:
                 future_men = executor.submit(run_scrape, "MEN'S SINGLES", "M", category)
@@ -98,16 +100,16 @@ class WTTScraper(BaseScraper):
 
         log.info(f"WTT scraping complete: {total_men} men, {total_women} women saved.")
 
-    def _scrape_gender(self, tab_name: str, gender: str, limit: int, category: str) -> int:
+    def _scrape_gender(self, tab_name: str, gender: str, limit: int | None, category: str, start_rank: int = 1) -> int:
         """Iterate through rank ranges for a specific gender and category."""
         import time
         total_scraped = 0
-        rank_start = 1
+        rank_start = ((start_rank - 1) // 100) * 100 + 1
         consecutive_empty = 0
         # Hard ceiling: don't request pages beyond this rank regardless of limit
         max_rank = 2000 if category == "SENIOR" else 1000
 
-        while total_scraped < limit and consecutive_empty < 5 and rank_start <= max_rank:
+        while (limit is None or total_scraped < limit) and consecutive_empty < 3 and rank_start <= max_rank:
             log.info(f"Scraping {category} {tab_name} range starting at {rank_start}...")
 
             encoded_tab = urllib.parse.quote(tab_name)
@@ -122,7 +124,8 @@ class WTTScraper(BaseScraper):
                     time.sleep(random.uniform(2, 4))
                     continue
 
-                scraped_in_page = self._parse_wtt_page(soup, gender, limit - total_scraped)
+                rem_limit = None if limit is None else (limit - total_scraped)
+                scraped_in_page = self._parse_wtt_page(soup, gender, rem_limit, start_rank=start_rank)
 
                 if scraped_in_page == 0:
                     log.info(f"No players found for {category} {tab_name} at rank {rank_start}. Retrying once...")
@@ -130,7 +133,7 @@ class WTTScraper(BaseScraper):
                     # Single retry before counting as empty
                     soup2 = self.get_soup_playwright(url)
                     if soup2:
-                        scraped_in_page = self._parse_wtt_page(soup2, gender, limit - total_scraped)
+                        scraped_in_page = self._parse_wtt_page(soup2, gender, rem_limit, start_rank=start_rank)
 
                 if scraped_in_page == 0:
                     log.info(f"Still empty for {category} {tab_name} at rank {rank_start}. consecutive_empty={consecutive_empty + 1}")
@@ -147,8 +150,8 @@ class WTTScraper(BaseScraper):
                 consecutive_empty += 1
                 rank_start += 100
 
-        # Fallback only if we found almost nothing
-        if total_scraped < 5 and category == "SENIOR":
+        # Fallback only if we found almost nothing and starting from top
+        if total_scraped < 5 and category == "SENIOR" and start_rank == 1 and limit is not None:
             dataset = KNOWN_MEN if gender == "M" else KNOWN_WOMEN
             log.info(f"Falling back to known dataset for {gender} (only {total_scraped} scraped)")
             fallback_scraped = self._save_known_dataset(dataset, gender, limit - total_scraped)
@@ -156,7 +159,7 @@ class WTTScraper(BaseScraper):
 
         return total_scraped
 
-    def _parse_wtt_page(self, soup, gender: str, limit: int) -> int:
+    def _parse_wtt_page(self, soup, gender: str, limit: int | None, start_rank: int = 1) -> int:
         """Parse WTT ranking HTML table and enrich each player with API data."""
         scraped = 0
         
@@ -168,7 +171,7 @@ class WTTScraper(BaseScraper):
         log.debug(f"Found {len(rows)} potential rows to parse.")
 
         for row in rows:
-            if scraped >= limit:
+            if limit is not None and scraped >= limit:
                 break
             try:
                 rank_cell = row.select_one(".player-rank")
@@ -185,6 +188,9 @@ class WTTScraper(BaseScraper):
                 if not rank_match:
                     continue
                 ranking = int(rank_match.group(1))
+
+                if ranking < start_rank:
+                    continue
 
                 name_cell = row.select_one(".player_name")
                 # Handle nested span for name

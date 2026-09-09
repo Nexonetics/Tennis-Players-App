@@ -17,8 +17,9 @@ class WTAScraper(BaseScraper):
         super().__init__("https://api.wtatennis.com/tennis/players/ranked")
         self.wiki = WikiScraper()
 
-    def scrape_rankings(self, limit=500):
-        log.info(f"Scraping WTA rankings from API (limit {limit})...")
+    def scrape_rankings(self, limit=None, start_rank=1):
+        limit_desc = f"limit {limit}" if limit is not None else "all available"
+        log.info(f"Scraping WTA rankings from API (from rank {start_rank}, {limit_desc})...")
         
         db = SessionLocal()
         existing_names = set()
@@ -34,11 +35,11 @@ class WTAScraper(BaseScraper):
         log.info(f"Loaded {len(existing_names)} existing players from DB for WTA.")
 
         players_scraped = 0
-        page = 0
         page_size = 100
+        page = (start_rank - 1) // page_size
         today = datetime.now().strftime("%Y-%m-%d")
 
-        while players_scraped < limit:
+        while limit is None or players_scraped < limit:
             url = f"{self.base_url}?metric=SINGLES&type=rankSingles&sort=asc&at={today}&pageSize={page_size}&page={page}"
             data = self.get_json(url)
             
@@ -47,7 +48,7 @@ class WTAScraper(BaseScraper):
                 break
 
             for item in data:
-                if players_scraped >= limit:
+                if limit is not None and players_scraped >= limit:
                     break
                 
                 try:
@@ -55,9 +56,14 @@ class WTAScraper(BaseScraper):
                     player_id = player_info.get('id')
                     ranking = item.get('ranking')
                     
+                    if not ranking or ranking < start_rank:
+                        continue
+                    
                     first_name = player_info.get('firstName', '')
                     last_name = player_info.get('lastName', '')
                     name = f"{first_name} {last_name}".strip()
+                    if not name:
+                        continue
                     
                     if not name or not ranking:
                         continue
