@@ -17,6 +17,9 @@ sys.path.append(os.path.join(project_root, 'backend'))
 from scraper.base_scraper import BaseScraper
 from scraper.utils.logger import log
 from scraper.tt_persistence import save_tt_player
+from scraper.historical_persistence import save_tt_player_with_rank
+from app.db.session import SessionLocal
+from app.models.tt_player import TableTennisPlayer, TableTennisHistoricalPlayer
 
 # Wikipedia REST API for player thumbnail images
 WIKI_SUMMARY_API = "https://en.wikipedia.org/api/rest_v1/page/summary/"
@@ -63,6 +66,20 @@ class WTTScraper(BaseScraper):
         from concurrent.futures import ThreadPoolExecutor
         log.info(f"Starting WTT table tennis scraping (limit {limit} per gender)...")
 
+        db = SessionLocal()
+        existing_names = set()
+        try:
+            for row in db.query(TableTennisPlayer.name).all():
+                if row[0]: existing_names.add(row[0].strip().lower())
+            for p in db.query(TableTennisHistoricalPlayer.first_name, TableTennisHistoricalPlayer.last_name).all():
+                existing_names.add(f"{p[0]} {p[1]}".strip().lower())
+        except Exception as e:
+            log.warning(f"Could not load existing TT players cache: {e}")
+        finally:
+            db.close()
+        self.existing_names = existing_names
+        log.info(f"Loaded {len(existing_names)} existing table tennis players from DB.")
+
         def run_scrape(tab_name, gender, category):
             return self._scrape_gender(tab_name, gender, limit, category)
 
@@ -83,40 +100,52 @@ class WTTScraper(BaseScraper):
 
     def _scrape_gender(self, tab_name: str, gender: str, limit: int, category: str) -> int:
         """Iterate through rank ranges for a specific gender and category."""
+        import time
         total_scraped = 0
         rank_start = 1
         consecutive_empty = 0
-        
-        while total_scraped < limit and consecutive_empty < 2:
+        # Hard ceiling: don't request pages beyond this rank regardless of limit
+        max_rank = 2000 if category == "SENIOR" else 1000
+
+        while total_scraped < limit and consecutive_empty < 5 and rank_start <= max_rank:
             log.info(f"Scraping {category} {tab_name} range starting at {rank_start}...")
-            
+
             encoded_tab = urllib.parse.quote(tab_name)
             url = f"{self.base_url}?selectedTab={encoded_tab}&Age={category}&Rank={rank_start}"
-            
+
             try:
                 soup = self.get_soup_playwright(url)
                 if not soup:
                     log.warning(f"Could not load page for {category} {tab_name} at rank {rank_start}")
                     consecutive_empty += 1
                     rank_start += 100
+                    time.sleep(random.uniform(2, 4))
                     continue
-                
+
                 scraped_in_page = self._parse_wtt_page(soup, gender, limit - total_scraped)
-                
+
                 if scraped_in_page == 0:
-                    log.info(f"No players found for {category} {tab_name} at rank {rank_start}.")
+                    log.info(f"No players found for {category} {tab_name} at rank {rank_start}. Retrying once...")
+                    time.sleep(random.uniform(2, 4))
+                    # Single retry before counting as empty
+                    soup2 = self.get_soup_playwright(url)
+                    if soup2:
+                        scraped_in_page = self._parse_wtt_page(soup2, gender, limit - total_scraped)
+
+                if scraped_in_page == 0:
+                    log.info(f"Still empty for {category} {tab_name} at rank {rank_start}. consecutive_empty={consecutive_empty + 1}")
                     consecutive_empty += 1
                 else:
                     total_scraped += scraped_in_page
                     consecutive_empty = 0
-                
+
                 rank_start += 100
-                import time
                 time.sleep(random.uniform(1, 2))
-                
+
             except Exception as e:
                 log.error(f"Error scraping {category} {tab_name} at rank {rank_start}: {e}")
-                break
+                consecutive_empty += 1
+                rank_start += 100
 
         # Fallback only if we found almost nothing
         if total_scraped < 5 and category == "SENIOR":
@@ -177,34 +206,48 @@ class WTTScraper(BaseScraper):
                     if id_match:
                         player_id = id_match.group(1)
 
-                name = name_cell.get_text(strip=True)
+                name = name_text
                 country = country_cell.get_text(strip=True) if country_cell else "Unknown"
+
+                points = 0
+                pts_cell = row.select_one(".player-points") or row.select_one(".points")
+                if pts_cell:
+                    try:
+                        p_str = re.sub(r"\D", "", pts_cell.get_text(strip=True))
+                        if p_str: points = int(p_str)
+                    except Exception:
+                        pass
 
                 # Initial data
                 player_data = {
                     "name": name,
                     "country": country,
                     "ranking": ranking,
+                    "points": points,
                     "gender": gender,
                     "source": "WTT Official",
                 }
 
-                # Enrich with API if we have an ID
-                if player_id:
+                is_existing = name.lower() in getattr(self, "existing_names", set())
+
+                # Enrich with API only if new player
+                if player_id and not is_existing:
                     enriched_data = self._enrich_player_data(player_id)
                     if enriched_data:
                         player_data.update(enriched_data)
+                    getattr(self, "existing_names", set()).add(name.lower())
+                    import time
+                    time.sleep(0.2)
                 
                 # If we still don't have stats, add fallback data as last resort
                 if "win_percentage" not in player_data:
                     player_data.update(self._generate_fallback_stats(ranking))
 
+                # Write to legacy flat table (for enrichment fields)
                 save_tt_player(player_data)
+                # Write to historical tables (so the backend API shows the rank)
+                save_tt_player_with_rank(player_data)
                 scraped += 1
-                
-                # Small delay between API calls to be polite
-                import time
-                time.sleep(0.5)
 
             except Exception as e:
                 log.debug(f"Error parsing WTT row: {e}")

@@ -5,7 +5,10 @@ from bs4 import BeautifulSoup
 from scraper.base_scraper import BaseScraper
 from scraper.utils.logger import log
 from scraper.persistence import save_player
+from scraper.historical_persistence import save_tennis_player_with_rank
 from scraper.scrapers.wiki_scraper import WikiScraper
+from app.db.session import SessionLocal
+from app.models.player import Player, TennisHistoricalPlayer
 
 WIKI_SUMMARY_API = "https://en.wikipedia.org/api/rest_v1/page/summary/"
 
@@ -14,9 +17,22 @@ class WTAScraper(BaseScraper):
         super().__init__("https://api.wtatennis.com/tennis/players/ranked")
         self.wiki = WikiScraper()
 
-    def scrape_rankings(self, limit=1500):
+    def scrape_rankings(self, limit=500):
         log.info(f"Scraping WTA rankings from API (limit {limit})...")
         
+        db = SessionLocal()
+        existing_names = set()
+        try:
+            for row in db.query(Player.name).all():
+                if row[0]: existing_names.add(row[0].strip().lower())
+            for p in db.query(TennisHistoricalPlayer.first_name, TennisHistoricalPlayer.last_name).all():
+                existing_names.add(f"{p[0]} {p[1]}".strip().lower())
+        except Exception as e:
+            log.warning(f"Could not load existing WTA players cache: {e}")
+        finally:
+            db.close()
+        log.info(f"Loaded {len(existing_names)} existing players from DB for WTA.")
+
         players_scraped = 0
         page = 0
         page_size = 100
@@ -55,30 +71,40 @@ class WTAScraper(BaseScraper):
                         except:
                             pass
 
-                    log.info(f"Found WTA {name} (Rank {ranking}). Enriching...")
-                    
+                    points = 0
+                    if item.get('points'):
+                        try:
+                            points = int(re.sub(r"\D", "", str(item['points'])))
+                        except Exception:
+                            pass
+
                     player_data = {
                         "name": name,
                         "ranking": ranking,
+                        "points": points,
                         "birth_date": birth_date,
                         "country": country,
                         "gender": "F",
                         "source": "WTA Tour Official"
                     }
 
-                    # Enrich from Official Profile if ID available
-                    if player_id and ranking <= 500:
-                        slug = name.lower().replace(" ", "-")
-                        profile_url = f"https://www.wtatennis.com/players/{player_id}/{slug}"
-                        self.enrich_from_wta(profile_url, player_data)
-
-                    # Fallback to Wikipedia for additional info or missing fields
-                    if ranking <= 1000 and (not player_data.get("height") or not player_data.get("wins")):
+                    is_existing = name.lower() in existing_names
+                    if not is_existing:
+                        log.info(f"New WTA player: {name} (Rank {ranking}). Enriching...")
+                        # Fast Wikipedia enrichment (<0.2s)
                         wiki_data = self.wiki.enrich_player(name)
                         if wiki_data:
                             for key, val in wiki_data.items():
                                 if not player_data.get(key):
                                     player_data[key] = val
+                        # Only enrich from WTA browser if still missing birth date and top 100
+                        if ranking <= 100 and player_id and not player_data.get("birth_date"):
+                            slug = name.lower().replace(" ", "-")
+                            profile_url = f"https://www.wtatennis.com/players/{player_id}/{slug}"
+                            self.enrich_from_wta(profile_url, player_data)
+                        existing_names.add(name.lower())
+                    else:
+                        log.debug(f"WTA player {name} already in DB. Skipping browser enrichment.")
 
                     # Final sanitization
                     if player_data.get("highest_ranking"):
@@ -89,13 +115,19 @@ class WTAScraper(BaseScraper):
                         player_data["highest_ranking"] = ranking
 
                     save_player(player_data)
+                    # Dual-write: ensure this player+rank lands in historical tables
+                    save_tennis_player_with_rank(player_data)
                     players_scraped += 1
+                    if players_scraped % 50 == 0:
+                        log.info(f"WTA Progress: {players_scraped}/{limit} players saved.")
                 except Exception as e:
                     log.error(f"Error parsing WTA API item: {e}")
 
             page += 1
             if len(data) < page_size:
                 break
+
+        return players_scraped
 
     def enrich_from_wta(self, url, player_data):
         log.info(f"Enriching {player_data['name']} from WTA profile...")
@@ -111,13 +143,23 @@ class WTAScraper(BaseScraper):
                 page = context.new_page()
                 page.goto(url, wait_until="domcontentloaded", timeout=60000)
                 
+                # Dismiss cookie banner / overlay if present so it does not intercept clicks
+                try:
+                    page.evaluate("""() => {
+                        const sdk = document.getElementById('onetrust-consent-sdk');
+                        if (sdk) sdk.remove();
+                        const filter = document.querySelector('.onetrust-pc-dark-filter');
+                        if (filter) filter.remove();
+                    }""")
+                except Exception:
+                    pass
+
                 # Try to click Career toggle if it exists
                 try:
-                    # More specific selector for the toggle
                     career_button = page.locator('button.segmented-controls__item:has-text("Career")')
                     if career_button.count() > 0:
-                        career_button.first.click()
-                        page.wait_for_timeout(1000) # Wait for stats to update
+                        career_button.first.click(timeout=3000, force=True)
+                        page.wait_for_timeout(500) # Wait for stats to update
                 except Exception as e:
                     log.debug(f"Could not click career toggle: {e}")
 

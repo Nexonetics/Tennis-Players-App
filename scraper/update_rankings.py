@@ -6,6 +6,14 @@ Also fixes the duplicate ranking display issue by ensuring rankings are filtered
 """
 import os
 import sys
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 import argparse
 from datetime import datetime, date
 from dotenv import load_dotenv
@@ -184,7 +192,7 @@ def check_duplicate_ranks():
         db.close()
 
 
-def scrape_new_tennis_rankings(limit_per_gender=100):
+def scrape_new_tennis_rankings(limit_per_gender=500):
     """Scrape latest tennis rankings from ATP and WTA."""
     log.info('\n' + '='*60)
     log.info('SCRAPING NEW TENNIS RANKINGS')
@@ -193,7 +201,6 @@ def scrape_new_tennis_rankings(limit_per_gender=100):
     try:
         from scrapers.atp_scraper import ATPScraper
         from scrapers.wta_scraper import WTAScraper
-        from import_historical_tennis import save_current_rankings
         
         today = date.today()
         
@@ -294,8 +301,8 @@ def main():
                         help='Update only table tennis rankings')
     parser.add_argument('--football', action='store_true', 
                         help='Update only football national team rankings')
-    parser.add_argument('--tennis-limit', type=int, default=100,
-                        help='Number of players to scrape per gender for tennis (default: 100)')
+    parser.add_argument('--tennis-limit', type=int, default=500,
+                        help='Number of players to scrape per gender for tennis (default: 500)')
     parser.add_argument('--tt-limit', type=int, default=500,
                         help='Number of players to scrape per gender for table tennis (default: 500)')
     parser.add_argument('--sources', action='store_true',
