@@ -176,6 +176,10 @@ def export_all():
         latest_ranks_tt_m = {}
         latest_ranks_tt_f = {}
 
+        if all_ttr:
+            latest = all_ttr[-1]
+            target_year, target_month, target_date = latest.ranking_year, latest.ranking_month, latest.ranking_date
+
         for r in all_ttr:
             spid = str(r.player_id)
             if spid not in tt_histories:

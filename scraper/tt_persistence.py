@@ -19,12 +19,17 @@ def save_tt_player(player_data):
         db_player = db.query(TableTennisPlayer).filter(
             TableTennisPlayer.name == player_data['name']
         ).first()
+        
+        flat_data = player_data.copy()
+        if 'points' in flat_data and not hasattr(TableTennisPlayer, 'points'):
+            flat_data.pop('points')
+
         if db_player:
-            for key, value in player_data.items():
+            for key, value in flat_data.items():
                 setattr(db_player, key, value)
             log.info(f"Updated TT player: {player_data['name']}")
         else:
-            db_player = TableTennisPlayer(**player_data)
+            db_player = TableTennisPlayer(**flat_data)
             db.add(db_player)
             log.info(f"Added new TT player: {player_data['name']}")
 
