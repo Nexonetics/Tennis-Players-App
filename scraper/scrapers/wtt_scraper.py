@@ -87,8 +87,8 @@ class WTTScraper(BaseScraper):
         total_men = 0
         total_women = 0
 
-        # Primary categories (Youth only goes up to ~250)
-        categories = ["SENIOR"] if start_rank > 300 else ["SENIOR", "YOUTH"]
+        # Primary categories (Only scrape Seniors for World Pro Rankings)
+        categories = ["SENIOR"]
         for category in categories:
             log.info(f"Scraping {category} rankings in parallel...")
             with ThreadPoolExecutor(max_workers=2) as executor:
