@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" fill="none">
+  <!-- Subtle decorative pink gradient wave ribbons -->
+  <path d="M-50 350 C50 380, 150 320, 250 250 C320 200, 360 220, 380 200" stroke="url(#pinkWave)" stroke-width="40" stroke-linecap="round" opacity="0.35" />
+  <path d="M-30 380 C80 340, 180 280, 280 180 C340 120, 370 140, 390 120" stroke="url(#pinkWaveLight)" stroke-width="25" stroke-linecap="round" opacity="0.25" />
+  
+  <!-- Tennis ball in air -->
+  <circle cx="210" cy="115" r="10" fill="#FA2E72" opacity="0.25" />
+
+  <!-- Tennis Racket -->
+  <g transform="translate(45, 105) rotate(-35)" opacity="0.28" stroke="#FA2E72" stroke-width="3" fill="none">
+    <ellipse cx="60" cy="50" rx="30" ry="42" />
+    <!-- Strings -->
+    <path d="M45 15 L45 85 M60 8 L60 92 M75 15 L75 85" stroke-width="1" stroke="#FA2E72" />
+    <path d="M35 35 L85 35 M30 50 L90 50 M35 65 L85 65" stroke-width="1" stroke="#FA2E72" />
+    <!-- Shaft & Handle -->
+    <line x1="60" y1="92" x2="60" y2="135" stroke-width="4" stroke="#FA2E72" />
+    <rect x="57" y="135" width="6" height="40" rx="2" fill="#FA2E72" />
+  </g>
+
+  <!-- Player Silhouette (Serving pose) -->
+  <path d="M120 230
+           C125 210, 135 190, 140 170
+           C145 160, 150 155, 155 145
+           C158 140, 165 142, 168 147
+           C170 152, 172 165, 168 180
+           C165 195, 162 215, 160 235
+           C175 240, 185 250, 195 265
+           C205 280, 215 300, 225 330
+           C215 335, 195 320, 185 295
+           C175 275, 165 265, 155 260
+           C150 280, 140 310, 135 340
+           C125 350, 115 355, 105 340
+           C115 305, 125 270, 130 245
+           C115 242, 100 240, 90 235
+           Z"
+        fill="#FA2E72" opacity="0.22" />
+
+  <!-- Visor & Head -->
+  <circle cx="152" cy="140" r="14" fill="#FA2E72" opacity="0.25" />
+  <path d="M140 135 Q165 125 175 138" stroke="#FA2E72" stroke-width="4" stroke-linecap="round" opacity="0.3" />
+
+  <!-- Raised Serving Arm -->
+  <path d="M152 145 C150 120, 130 80, 105 70" stroke="#FA2E72" stroke-width="8" stroke-linecap="round" fill="none" opacity="0.25" />
+
+  <defs>
+    <linearGradient id="pinkWave" x1="0" y1="0" x2="300" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F43F5E" />
+      <stop offset="1" stop-color="#FDA4AF" stop-opacity="0" />
+    </linearGradient>
+    <linearGradient id="pinkWaveLight" x1="0" y1="0" x2="300" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FB7185" />
+      <stop offset="1" stop-color="#FFF1F2" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+</svg>
