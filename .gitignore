@@ -31,4 +31,3 @@ backend/venv/
 scraper/venv/
 test_*.py
 scratch/
-web/

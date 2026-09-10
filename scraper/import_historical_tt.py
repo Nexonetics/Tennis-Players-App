@@ -356,7 +356,7 @@ def process_file(db, filepath, player_caches):
     log.info(f"Completed {filename}: Saved {added_count} rankings, skipped {skipped_count} duplicates.")
 
 def main():
-    scraped_dir = "/home/nexonetics/nexonetics/tennis_app/scratch/scraped_html"
+    scraped_dir = os.path.join(project_root, "scratch", "scraped_html")
     if not os.path.exists(scraped_dir):
         log.error(f"Directory {scraped_dir} does not exist.")
         return
