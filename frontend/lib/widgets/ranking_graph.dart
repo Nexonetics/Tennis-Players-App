@@ -41,7 +41,7 @@ class _GraphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
+    if (points.isEmpty) return;
 
     final paint = Paint()
       ..color = color.withOpacity(0.8)
@@ -61,23 +61,45 @@ class _GraphPainter extends CustomPainter {
       textAlign: TextAlign.center,
     );
 
-    final path = Path();
-    final fillPath = Path();
-
-    // In tennis, lower rank is better (higher on graph)
     final rankings = points.map((p) => p.ranking.toDouble()).toList();
     final minRank = rankings.reduce(math.min);
     final maxRank = rankings.reduce(math.max);
     final range = (maxRank - minRank).clamp(1.0, double.infinity);
 
+    final path = Path();
+    final fillPath = Path();
+
+    if (points.length == 1) {
+      double x = size.width / 2;
+      double y = size.height / 2;
+
+      final dotPaint = Paint()..color = color;
+      final dotBgPaint = Paint()..color = Colors.white;
+      canvas.drawCircle(Offset(x, y), 5, dotBgPaint);
+      canvas.drawCircle(Offset(x, y), 3, dotPaint);
+
+      textPainter.text = TextSpan(
+        text: '#${points[0].ranking}',
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), y - 20));
+
+      textPainter.text = TextSpan(
+        text: DateFormat("MMM ''yy").format(points[0].date),
+        style: const TextStyle(color: Colors.grey, fontSize: 9, fontWeight: FontWeight.w500),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), size.height + 10));
+      return;
+    }
+
     double xStep = size.width / (points.length - 1);
 
     for (int i = 0; i < points.length; i++) {
-      // Normalize to 0.0 - 1.0 (inverted for rank)
       double normalized = 1.0 - ((points[i].ranking - minRank) / range);
       double x = i * xStep;
-      double y = size.height *
-          (1.0 - (normalized * 0.7 + 0.15)); // Center with padding
+      double y = size.height * (1.0 - (normalized * 0.7 + 0.15));
 
       if (i == 0) {
         path.moveTo(x, y);
@@ -92,44 +114,80 @@ class _GraphPainter extends CustomPainter {
         fillPath.lineTo(x, size.height);
         fillPath.close();
       }
-
-      // Draw Labels (Ranking value above point)
-      textPainter.text = TextSpan(
-        text: '#${points[i].ranking}',
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
-      );
-      textPainter.layout();
-      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), y - 20));
-
-      // Draw Month and Year below
-      textPainter.text = TextSpan(
-        text: DateFormat("MMM ''yy").format(points[i].date),
-        style: const TextStyle(color: Colors.grey, fontSize: 9, fontWeight: FontWeight.w500),
-      );
-      textPainter.layout();
-      textPainter.paint(
-        canvas,
-        Offset(x - (textPainter.width / 2), size.height + 10),
-      );
     }
 
     canvas.drawPath(fillPath, fillPaint);
     canvas.drawPath(path, paint);
 
-    // Draw dots
     final dotPaint = Paint()..color = color;
     final dotBgPaint = Paint()..color = Colors.white;
-    for (int i = 0; i < points.length; i++) {
+    
+    int labelStep = (points.length / 6).clamp(1, double.infinity).toInt();
+    int dotStep = points.length > 50 ? (points.length / 50).clamp(1, double.infinity).toInt() : 1;
+
+    for (int i = 0; i < points.length; i += dotStep) {
+      double normalized = 1.0 - ((points[i].ranking - minRank) / range);
+      double x = i * xStep;
+      double y = size.height * (1.0 - (normalized * 0.7 + 0.15));
+
+      canvas.drawCircle(Offset(x, y), 3.5, dotBgPaint);
+      canvas.drawCircle(Offset(x, y), 2, dotPaint);
+    }
+    
+    if (points.length > 1 && (points.length - 1) % dotStep != 0) {
+      int lastI = points.length - 1;
+      double normalized = 1.0 - ((points[lastI].ranking - minRank) / range);
+      double x = lastI * xStep;
+      double y = size.height * (1.0 - (normalized * 0.7 + 0.15));
+      canvas.drawCircle(Offset(x, y), 3.5, dotBgPaint);
+      canvas.drawCircle(Offset(x, y), 2, dotPaint);
+    }
+
+    for (int i = 0; i < points.length; i += labelStep) {
       double normalized = 1.0 - ((points[i].ranking - minRank) / range);
       double x = i * xStep;
       double y = size.height * (1.0 - (normalized * 0.7 + 0.15));
 
       canvas.drawCircle(Offset(x, y), 5, dotBgPaint);
       canvas.drawCircle(Offset(x, y), 3, dotPaint);
+
+      textPainter.text = TextSpan(
+        text: '#${points[i].ranking}',
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), y - 20));
+
+      textPainter.text = TextSpan(
+        text: DateFormat("MMM ''yy").format(points[i].date),
+        style: const TextStyle(color: Colors.grey, fontSize: 9, fontWeight: FontWeight.w500),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), size.height + 10));
+    }
+
+    if ((points.length - 1) % labelStep != 0) {
+      int i = points.length - 1;
+      double normalized = 1.0 - ((points[i].ranking - minRank) / range);
+      double x = i * xStep;
+      double y = size.height * (1.0 - (normalized * 0.7 + 0.15));
+      
+      canvas.drawCircle(Offset(x, y), 5, dotBgPaint);
+      canvas.drawCircle(Offset(x, y), 3, dotPaint);
+
+      textPainter.text = TextSpan(
+        text: '#${points[i].ranking}',
+        style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), y - 20));
+
+      textPainter.text = TextSpan(
+        text: DateFormat("MMM ''yy").format(points[i].date),
+        style: const TextStyle(color: Colors.grey, fontSize: 9, fontWeight: FontWeight.w500),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(x - (textPainter.width / 2), size.height + 10));
     }
   }
 
