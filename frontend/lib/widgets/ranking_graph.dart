@@ -24,11 +24,14 @@ class RankingGraph extends StatelessWidget {
   Widget build(BuildContext context) {
     if (points.isEmpty) return const SizedBox.shrink();
 
+    final sortedPoints = List<RankingPoint>.from(points)
+      ..sort((a, b) => a.date.compareTo(b.date));
+
     return Container(
       height: 200,
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(10, 20, 10, 40),
-      child: CustomPaint(painter: _GraphPainter(points, color)),
+      child: CustomPaint(painter: _GraphPainter(sortedPoints, color)),
     );
   }
 }
@@ -236,6 +239,9 @@ class ComparisonRankingGraph extends StatelessWidget {
       );
     }
 
+    final sortedA = List<RankingPoint>.from(pointsA)..sort((a, b) => a.date.compareTo(b.date));
+    final sortedB = List<RankingPoint>.from(pointsB)..sort((a, b) => a.date.compareTo(b.date));
+
     return Container(
       height: 220,
       width: double.infinity,
@@ -244,8 +250,8 @@ class ComparisonRankingGraph extends StatelessWidget {
         painter: _ComparisonGraphPainter(
           nameA,
           nameB,
-          pointsA,
-          pointsB,
+          sortedA,
+          sortedB,
           colorA,
           colorB,
         ),
