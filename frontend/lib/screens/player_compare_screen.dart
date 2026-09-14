@@ -822,7 +822,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen>
               if (p.age != null)
                 _buildHighlightBadge(
                   icon: Icons.cake_rounded,
-                  text: '${p.age} yrs',
+                  text: '${p.age} yrs${p.birthYear != null ? " (${p.birthYear})" : ""}',
                   color: accentColor,
                 ),
             ],
@@ -854,7 +854,9 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen>
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              _buildStatRow('Age', a.age != null ? '${a.age} Yrs' : 'N/A', b.age != null ? '${b.age} Yrs' : 'N/A',
+              _buildStatRow('Age / Birth Year',
+                  a.age != null ? '${a.age} Yrs${a.birthYear != null ? " (${a.birthYear})" : ""}' : 'N/A',
+                  b.age != null ? '${b.age} Yrs${b.birthYear != null ? " (${b.birthYear})" : ""}' : 'N/A',
                   lowerIsBetter: false, isNumeric: false, highlight: true),
               _buildStatRow('Country', a.country ?? 'N/A', b.country ?? 'N/A',
                   isNumeric: false, highlight: true),

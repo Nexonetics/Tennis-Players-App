@@ -188,7 +188,7 @@ class _TtPlayerDetailScreenState extends State<TtPlayerDetailScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '${player.country ?? 'N/A'} • ${player.age != null ? '${player.age} years' : 'Pro Athlete'}',
+                              '${player.country ?? 'N/A'} • ${player.age != null ? '${player.age} years${player.birthYear != null ? ' (Born ${player.birthYear})' : ''}' : (player.birthYear != null ? 'Born ${player.birthYear}' : 'Pro Athlete')}',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[700],
@@ -298,7 +298,7 @@ class _TtPlayerDetailScreenState extends State<TtPlayerDetailScreen> {
                 ),
               ),
               Text(
-                '${player.country ?? 'N/A'} • ${player.age != null ? '${player.age} years' : 'Pro Athlete'}',
+                '${player.country ?? 'N/A'} • ${player.age != null ? '${player.age} years${player.birthYear != null ? ' (Born ${player.birthYear})' : ''}' : (player.birthYear != null ? 'Born ${player.birthYear}' : 'Pro Athlete')}',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.grey[700],
@@ -544,6 +544,12 @@ class _TtPlayerDetailScreenState extends State<TtPlayerDetailScreen> {
               'Career High Rank',
               player.careerHighRank != null ? '#${player.careerHighRank}$chDateStr' : 'N/A',
               Icons.trending_up_rounded,
+            ),
+            _buildStatCard(
+              cardWidth,
+              'Birth Year',
+              player.birthYear != null ? '${player.birthYear}' : 'N/A',
+              Icons.cake_rounded,
             ),
             _buildStatCard(
               cardWidth,
