@@ -47,6 +47,8 @@ class Player {
     this.careerHighDate,
   });
 
+  int? get birthYear => birthDate?.year;
+
   int? get age {
     if (birthDate == null) return null;
     final now = DateTime.now();

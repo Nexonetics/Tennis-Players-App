@@ -228,7 +228,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              '${player.country ?? "N/A"} • ${player.age != null ? "${player.age} years" : "Pro Athlete"}',
+                              '${player.country ?? "N/A"} • ${player.age != null ? "${player.age} years${player.birthYear != null ? ' (Born ${player.birthYear})' : ''}" : (player.birthYear != null ? "Born ${player.birthYear}" : "Pro Athlete")}',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[700],
@@ -294,7 +294,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
                 ),
               ),
               Text(
-                '${player.country ?? "N/A"} • ${player.age != null ? "${player.age} years" : "Pro Athlete"}',
+                '${player.country ?? "N/A"} • ${player.age != null ? "${player.age} years${player.birthYear != null ? ' (Born ${player.birthYear})' : ''}" : (player.birthYear != null ? "Born ${player.birthYear}" : "Pro Athlete")}',
                 style: TextStyle(
                   fontSize: 18,
                   color: Colors.grey[700],
@@ -426,6 +426,12 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
               'Career High',
               highestRankLabel,
               Icons.stars_rounded,
+            ),
+            _buildStatCard(
+              cardWidth,
+              'Birth Year',
+              player.birthYear != null ? '${player.birthYear}' : 'N/A',
+              Icons.cake_rounded,
             ),
             _buildStatCard(
               cardWidth,
