@@ -175,15 +175,17 @@ def merge_cluster(db, cluster, ranking_counts: dict, dry_run: bool = True):
             if (not primary.country or primary.country.upper() == 'UNKNOWN') and sec.country:
                 primary.country = sec.country
 
-            # Bulk SQL delete colliding dates from secondary using JOIN
+            # Bulk SQL delete colliding dates from secondary
             db.execute(text("""
-                DELETE FROM tt_rankings_historical r1
-                USING tt_rankings_historical r2
-                WHERE r1.player_id = :sec_id
-                  AND r2.player_id = :primary_id
-                  AND r1.ranking_year = r2.ranking_year
-                  AND r1.ranking_month = r2.ranking_month
-                  AND r1.ranking_date = r2.ranking_date
+                DELETE FROM tt_rankings_historical
+                WHERE player_id = :sec_id
+                  AND EXISTS (
+                      SELECT 1 FROM tt_rankings_historical r2
+                      WHERE r2.player_id = :primary_id
+                        AND r2.ranking_year = tt_rankings_historical.ranking_year
+                        AND r2.ranking_month = tt_rankings_historical.ranking_month
+                        AND r2.ranking_date = tt_rankings_historical.ranking_date
+                  )
             """), {"sec_id": sec.id, "primary_id": primary.id})
 
             # Bulk SQL update remaining rankings to primary_id
@@ -250,17 +252,22 @@ def main():
             """))
 
             # Also deduplicate TableTennisPlayer (active table)
-            db.execute(text("""
-                DELETE FROM table_tennis_players
-                WHERE id IN (
-                    SELECT t1.id FROM table_tennis_players t1
-                    JOIN table_tennis_players t2
-                      ON t1.gender = t2.gender
-                     AND LOWER(SPLIT_PART(t1.name, ' ', 1)) = LOWER(SPLIT_PART(t2.name, ' ', 1))
-                     AND LOWER(SPLIT_PART(t1.name, ' ', ARRAY_LENGTH(REGEXP_SPLIT_TO_ARRAY(t1.name, '\s+'), 1))) = LOWER(SPLIT_PART(t2.name, ' ', ARRAY_LENGTH(REGEXP_SPLIT_TO_ARRAY(t2.name, '\s+'), 1)))
-                     AND (t1.ranking IS NULL OR t1.ranking > t2.ranking OR (t1.ranking = t2.ranking AND t1.id > t2.id))
-                )
-            """))
+            tt_legacy_players = db.query(TableTennisPlayer).all()
+            legacy_groups = {}
+            for p in tt_legacy_players:
+                if not p.name: continue
+                words = re.findall(r'\b[a-z]+\b', p.name.lower())
+                if len(words) < 2: continue
+                key = (p.gender, words[0], words[-1])
+                legacy_groups.setdefault(key, []).append(p)
+            
+            for key, group in legacy_groups.items():
+                if len(group) > 1:
+                    # Keep the one with highest rank (lowest rank number)
+                    group.sort(key=lambda x: (x.ranking if x.ranking else 999999, x.id))
+                    primary = group[0]
+                    for sec in group[1:]:
+                        db.delete(sec)
 
             db.commit()
             print(f"\n✅ SUCCESSFULLY EXECUTED: Merged {merged_clusters_count} clusters, removed {total_secondaries_removed} duplicate historical player records!")
