@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { sportCategories } from '@/data/dummyData';
 
@@ -18,10 +19,8 @@ const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, class
     case 'table-tennis':
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-          {/* Ping Pong Paddle */}
           <circle cx="11" cy="9" r="6.5" />
           <path d="M15.5 13.5 L20 18" strokeWidth="2.5" />
-          {/* Ping pong ball */}
           <circle cx="4" cy="17" r="2" fill="currentColor" stroke="none" />
         </svg>
       );
@@ -56,8 +55,9 @@ export const SportsGrid: React.FC = () => {
   return (
     <div className="grid grid-cols-2 gap-4">
       {sportCategories.map((sport) => (
-        <div
+        <Link
           key={sport.id}
+          href={`/rankings`}
           className="relative h-[138px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5"
         >
           {/* Background image */}
@@ -65,6 +65,7 @@ export const SportsGrid: React.FC = () => {
             src={sport.image}
             alt={sport.title}
             fill
+            sizes="(max-width: 768px) 100vw, 50vw"
             className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
 
@@ -94,7 +95,7 @@ export const SportsGrid: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
+        </Link>
       ))}
     </div>
   );

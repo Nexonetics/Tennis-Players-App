@@ -1,42 +1,204 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
-import { ArrowLeftRight, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { ArrowLeftRight, X, Search, Loader2 } from 'lucide-react';
+import { UnifiedAthlete, HistoryPoint } from '@/types';
 
-export default function ComparePage() {
-  const dummyPlayerA = {
-    name: 'Sun Yingsha',
-    country: 'China',
-    age: 26,
-    winRate: 50.0,
-    currentRank: 1,
-    careerHigh: 1,
-    careerHighDate: 'Feb 2022',
-    image: 'https://i.pravatar.cc/150?img=47'
-  };
+// Safe Athlete Image component with onError fallback
+const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
+  src?: string;
+  alt: string;
+  width: number;
+  height: number;
+  className?: string;
+  fallbackLetter: string;
+}) => {
+  const [hasError, setHasError] = useState(false);
 
-  const dummyPlayerB = {
-    name: 'Sato Hitomi',
-    country: 'Japan',
-    age: 28,
-    winRate: 50.0,
-    currentRank: 15,
-    careerHigh: 9,
-    careerHighDate: 'Apr 2017',
-    image: 'https://i.pravatar.cc/150?img=48'
-  };
+  if (!src || hasError) {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-600 text-white font-bold text-xl flex items-center justify-center">
+        {fallbackLetter}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-10">
-      
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
+function ComparePageContent() {
+  const searchParams = useSearchParams();
+  const initialPlayer1 = searchParams.get('player1') || '';
+  const initialSport = (searchParams.get('sport') as any) || 'Tennis';
+
+  const [sport, setSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>(initialSport);
+
+  const [playerA, setPlayerA] = useState<UnifiedAthlete | null>(null);
+  const [playerB, setPlayerB] = useState<UnifiedAthlete | null>(null);
+
+  const [historyA, setHistoryA] = useState<HistoryPoint[]>([]);
+  const [historyB, setHistoryB] = useState<HistoryPoint[]>([]);
+
+  const [searchModalOpen, setSearchModalOpen] = useState<'A' | 'B' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<UnifiedAthlete[]>([]);
+  const [searching, setSearching] = useState(false);
+
+  // Initial load for default players
+  useEffect(() => {
+    async function loadDefaults() {
+      try {
+        const res = await fetch(`/api/players?sport=${encodeURIComponent(sport)}&pageSize=5`);
+        if (res.ok) {
+          const data = await res.json();
+          const items: UnifiedAthlete[] = data.items || [];
+          if (items.length >= 2) {
+            let pA = items[0];
+            let pB = items[1];
+
+            if (initialPlayer1) {
+              const resA = await fetch(`/api/players/${initialPlayer1}?sport=${encodeURIComponent(sport)}`);
+              if (resA.ok) {
+                const dataA = await resA.json();
+                if (dataA.athlete) pA = dataA.athlete;
+              }
+            }
+
+            setPlayerA(pA);
+            setPlayerB(pB);
+          }
+        }
+      } catch (err) {
+        console.error('Failed loading default players for compare', err);
+      }
+    }
+    loadDefaults();
+  }, [sport, initialPlayer1]);
+
+  // Fetch histories when playerA or playerB changes
+  useEffect(() => {
+    async function fetchHistories() {
+      if (playerA) {
+        try {
+          const res = await fetch(`/api/players/${playerA.id}?sport=${encodeURIComponent(sport)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setHistoryA(data.history || []);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      if (playerB) {
+        try {
+          const res = await fetch(`/api/players/${playerB.id}?sport=${encodeURIComponent(sport)}`);
+          if (res.ok) {
+            const data = await res.json();
+            setHistoryB(data.history || []);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    fetchHistories();
+  }, [playerA, playerB, sport]);
+
+  // Search players inside modal
+  const handleSearch = useCallback(async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/players?sport=${encodeURIComponent(sport)}&query=${encodeURIComponent(searchQuery)}&pageSize=10`);
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data.items || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSearching(false);
+    }
+  }, [sport, searchQuery]);
+
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      handleSearch();
+    }
+  }, [searchQuery, handleSearch]);
+
+  const selectAthlete = (athlete: UnifiedAthlete) => {
+    if (searchModalOpen === 'A') setPlayerA(athlete);
+    if (searchModalOpen === 'B') setPlayerB(athlete);
+    setSearchModalOpen(null);
+    setSearchQuery('');
+  };
+
+  const getSportEmoji = (s: string) => {
+    switch (s) {
+      case 'Tennis': return '🎾';
+      case 'Table Tennis': return '🏓';
+      case 'Football': return '⚽';
+      case 'Basketball': return '🏀';
+      default: return '🏆';
+    }
+  };
+
+  // Connected SVG timeline calculation for comparison
+  const recentA = historyA.slice(-10);
+  const recentB = historyB.slice(-10);
+
+  const allRanks = [...recentA.map(h => h.ranking), ...recentB.map(h => h.ranking)];
+  if (playerA) allRanks.push(playerA.ranking);
+  if (playerB) allRanks.push(playerB.ranking);
+
+  const minRank = allRanks.length > 0 ? Math.min(...allRanks) : 1;
+  const maxRank = allRanks.length > 0 ? Math.max(...allRanks) : 10;
+  const spanRank = Math.max(1, maxRank - minRank);
+
+  const svgW = 800;
+  const svgH = 160;
+  const padX = 40;
+  const padY = 25;
+  const usableW = svgW - 2 * padX;
+  const usableH = svgH - 2 * padY;
+
+  const pointsA = recentA.map((pt, i) => {
+    const x = recentA.length === 1 ? svgW / 2 : padX + (i / (recentA.length - 1)) * usableW;
+    const y = padY + ((pt.ranking - minRank) / spanRank) * usableH;
+    return { x, y, pt };
+  });
+
+  const pointsB = recentB.map((pt, i) => {
+    const x = recentB.length === 1 ? svgW / 2 : padX + (i / (recentB.length - 1)) * usableW;
+    const y = padY + ((pt.ranking - minRank) / spanRank) * usableH;
+    return { x, y, pt };
+  });
+
+  const pathA = pointsA.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  const pathB = pointsB.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+
+  return (
+    <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-12">
       {/* Hero Banner */}
       <div className="w-full h-44 rounded-3xl overflow-hidden relative shadow-sm border border-blue-900 bg-[#0A2342] flex items-center px-10">
         <div className="absolute inset-0 z-0">
           <Image
-            src="https://images.unsplash.com/photo-1511414445137-58fdbba9e557?q=80&w=2000&auto=format&fit=crop"
-            alt="Table Tennis Banner"
+            src="https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=2000&auto=format&fit=crop"
+            alt="Compare Banner"
             fill
+            sizes="100vw"
             className="object-cover opacity-30 mix-blend-overlay"
           />
         </div>
@@ -46,210 +208,374 @@ export default function ComparePage() {
           </div>
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-[10px] font-bold uppercase tracking-widest mb-2 border border-white/10">
-              <ArrowLeftRight className="w-3 h-3" /> Table Tennis
+              {getSportEmoji(sport)} {sport} Comparison
             </div>
             <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">
-              Compare <span className="text-[#FA2E72]">Players</span>
+              Compare <span className="text-[#FA2E72]">Athletes</span>
             </h1>
-            <p className="text-blue-100 text-sm font-medium max-w-lg">Analyze and compare player profiles, rankings, and performance side by side.</p>
+            <p className="text-blue-100 text-sm font-medium max-w-lg">Analyze and compare rankings, points, win rates, and historical timelines side-by-side.</p>
           </div>
         </div>
-        <div className="absolute right-10 bottom-6 rotate-[-10deg] opacity-80 pointer-events-none">
-          <span className="text-4xl font-extrabold text-white/50" style={{ fontFamily: 'cursive' }}>Better<br/>Together</span>
-        </div>
+      </div>
+
+      {/* Sport Selector */}
+      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+        {(['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setSport(s)}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all border flex items-center gap-2 cursor-pointer whitespace-nowrap
+              ${sport === s ? 'bg-[#FA2E72] text-white border-transparent shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
+          >
+            <span>{getSportEmoji(s)}</span>
+            {s}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Sidebar (Optional space, as per design there's a Quick Info block on left, but it's grayed out or maybe global info. In Screenshot 2, the left bar is actually "Quick Info" for Player A, but wait, the main content takes up most space). */}
+        {/* Left Info Panel */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-5">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-2">
-              <span className="text-lg">👤</span> Quick Info
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-5">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-1">
+              <span className="text-lg">👤</span> Athlete Comparison
             </h3>
 
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-lg">🏳️</div>
-              <div>
-                <div className="text-xs font-semibold text-slate-400">Country</div>
-                <div className="font-bold text-[#FA2E72]">China</div>
+            <div className="flex flex-col gap-4 text-xs font-medium text-slate-600">
+              <p>Select any two athletes from the cached dataset to compare their profile stats and ranking history timelines.</p>
+              <div className="p-3 bg-pink-50 rounded-2xl border border-pink-100 text-[#FA2E72] font-semibold text-xs">
+                💡 Tip: Click on any athlete card above to change the selected player.
               </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 text-lg">📅</div>
-              <div>
-                <div className="text-xs font-semibold text-slate-400">Age</div>
-                <div className="font-bold text-[#FA2E72]">26 years</div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 text-lg">🏓</div>
-              <div>
-                <div className="text-xs font-semibold text-slate-400">Playing Style</div>
-                <div className="font-bold text-[#FA2E72]">Right Handed</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-500 text-lg">🏆</div>
-              <div>
-                <div className="text-xs font-semibold text-slate-400">Current Rank</div>
-                <div className="font-bold text-[#FA2E72]">#1</div>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-6 border-t border-slate-100">
-              <span className="text-4xl text-pink-200 font-serif leading-none block mb-2">"</span>
-              <p className="text-[#FA2E72] italic text-sm font-medium pr-4">
-                Discipline turns talent into greatness.
-              </p>
-              <div className="w-6 h-1 bg-[#FA2E72] rounded-full mt-4"></div>
             </div>
           </div>
         </div>
 
-        {/* Right Content */}
+        {/* Right Main Content */}
         <div className="lg:col-span-9 flex flex-col gap-6">
-          
           {/* Player Selectors */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-6">
-              
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
               {/* Selector A */}
-              <div className="flex-1 border border-slate-200 rounded-full p-2 pl-4 pr-6 flex items-center gap-4 hover:border-slate-300 transition-colors shadow-xs">
-                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm">
-                  <Image src={dummyPlayerA.image} alt={dummyPlayerA.name} width={48} height={48} className="object-cover" />
+              <div
+                onClick={() => setSearchModalOpen('A')}
+                className="w-full sm:w-1/2 border border-slate-200 hover:border-[#FA2E72] rounded-full p-2 pl-4 pr-6 flex items-center gap-4 transition-all shadow-xs bg-slate-50/50 cursor-pointer group"
+              >
+                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200 flex items-center justify-center">
+                  <AthleteImage
+                    src={playerA?.imageUrl}
+                    alt={playerA?.name || 'A'}
+                    width={48}
+                    height={48}
+                    className="object-cover w-full h-full"
+                    fallbackLetter={playerA?.name.charAt(0) || 'A'}
+                  />
                 </div>
-                <div className="flex-1">
-                  <div className="font-bold text-slate-900">{dummyPlayerA.name}</div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                    <span className="text-[#FA2E72]">●</span> {dummyPlayerA.country} • {dummyPlayerA.age} yrs
+                <div className="flex-1 overflow-hidden">
+                  <div className="font-bold text-slate-900 truncate group-hover:text-[#FA2E72] transition-colors">
+                    {playerA?.name || 'Select Player A'}
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 truncate">
+                    {playerA ? `${playerA.country} • Rank #${playerA.ranking}` : 'Click to search'}
                   </div>
                 </div>
-                <button className="p-1 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-4 h-4" /></button>
+                <button className="text-xs text-[#FA2E72] font-bold">Change</button>
               </div>
 
-              <div className="text-slate-300 font-bold text-xl px-2">VS</div>
+              <div className="text-slate-300 font-extrabold text-xl px-2">VS</div>
 
               {/* Selector B */}
-              <div className="flex-1 border border-slate-200 rounded-full p-2 pl-4 pr-6 flex items-center gap-4 hover:border-slate-300 transition-colors shadow-xs bg-slate-50/50">
-                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-sm bg-slate-200">
-                  <Image src={dummyPlayerB.image} alt={dummyPlayerB.name} width={48} height={48} className="object-cover" />
+              <div
+                onClick={() => setSearchModalOpen('B')}
+                className="w-full sm:w-1/2 border border-slate-200 hover:border-indigo-600 rounded-full p-2 pl-4 pr-6 flex items-center gap-4 transition-all shadow-xs bg-slate-50/50 cursor-pointer group"
+              >
+                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200 flex items-center justify-center">
+                  <AthleteImage
+                    src={playerB?.imageUrl}
+                    alt={playerB?.name || 'B'}
+                    width={48}
+                    height={48}
+                    className="object-cover w-full h-full"
+                    fallbackLetter={playerB?.name.charAt(0) || 'B'}
+                  />
                 </div>
-                <div className="flex-1">
-                  <div className="font-bold text-slate-900">{dummyPlayerB.name}</div>
-                  <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                    <span className="text-indigo-600">●</span> {dummyPlayerB.country} • {dummyPlayerB.age} yrs
+                <div className="flex-1 overflow-hidden">
+                  <div className="font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                    {playerB?.name || 'Select Player B'}
+                  </div>
+                  <div className="text-xs font-semibold text-slate-500 truncate">
+                    {playerB ? `${playerB.country} • Rank #${playerB.ranking}` : 'Click to search'}
                   </div>
                 </div>
-                <button className="p-1 hover:bg-slate-100 rounded-full text-slate-400"><X className="w-4 h-4" /></button>
+                <button className="text-xs text-indigo-600 font-bold">Change</button>
               </div>
-
             </div>
-            <button className="w-full bg-[#FA2E72] hover:bg-[#E02263] text-white py-3.5 rounded-full font-bold shadow-sm transition-colors mt-2 flex items-center justify-center gap-2">
-              <ArrowLeftRight className="w-5 h-5" /> COMPARE ATHLETES
-            </button>
           </div>
 
           {/* Comparison Stats Section */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+          {playerA && playerB && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-6">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                <span className="text-[#FA2E72]">📈</span>
-                Player Comparison
+                <span>📈</span> Player Head-to-Head Comparison
               </h3>
-              <button className="text-sm font-bold text-[#FA2E72] hover:text-[#E02263] bg-pink-50 hover:bg-pink-100 px-4 py-1.5 rounded-full transition-colors">
-                View Full Stats →
-              </button>
-            </div>
-            
-            {/* Headers */}
-            <div className="flex items-center justify-between px-6">
-              <div className="flex items-center gap-4 w-1/3">
-                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0">
-                  <Image src={dummyPlayerA.image} alt="A" width={48} height={48} />
-                </div>
-                <div>
-                  <div className="font-bold text-slate-900">{dummyPlayerA.name}</div>
-                  <div className="text-[10px] font-semibold text-slate-500"><span className="text-[#FA2E72]">●</span> {dummyPlayerA.country} • {dummyPlayerA.age} yrs</div>
-                </div>
-              </div>
-              <div className="text-slate-300 font-bold text-sm">VS</div>
-              <div className="flex items-center gap-4 justify-end w-1/3 text-right">
-                <div>
-                  <div className="font-bold text-slate-900">{dummyPlayerB.name}</div>
-                  <div className="text-[10px] font-semibold text-slate-500"><span className="text-indigo-600">●</span> {dummyPlayerB.country} • {dummyPlayerB.age} yrs</div>
-                </div>
-                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0">
-                  <Image src={dummyPlayerB.image} alt="B" width={48} height={48} />
-                </div>
-              </div>
-            </div>
 
-            {/* Stats Table */}
-            <div className="flex flex-col">
-              <div className="bg-slate-50 rounded-xl px-4 py-2 mb-2 text-xs font-bold text-slate-500 uppercase tracking-wider">Stats Summary</div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                <div className="w-1/3 text-left font-bold text-slate-800">{dummyPlayerA.age} Yrs</div>
-                <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Age</div>
-                <div className="w-1/3 text-right font-bold text-slate-800">{dummyPlayerB.age} Yrs</div>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                <div className="w-1/3 text-left font-bold text-slate-800">{dummyPlayerA.country}</div>
-                <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Country</div>
-                <div className="w-1/3 text-right font-bold text-slate-800">{dummyPlayerB.country}</div>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                <div className="w-1/3 text-left font-bold text-slate-800">{dummyPlayerA.winRate.toFixed(1)}%</div>
-                <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Win %</div>
-                <div className="w-1/3 text-right font-bold text-slate-800">{dummyPlayerB.winRate.toFixed(1)}%</div>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4 bg-[#FA2E72]/5 rounded-lg my-1">
-                <div className="w-1/3 text-left font-bold text-[#FA2E72]">#{dummyPlayerA.currentRank}</div>
-                <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Current Rank</div>
-                <div className="w-1/3 text-right font-bold text-slate-800">#{dummyPlayerB.currentRank}</div>
-              </div>
-              
-              <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                <div className="w-1/3 text-left font-bold text-[#FA2E72]">#{dummyPlayerA.careerHigh} <span className="text-xs font-normal text-slate-500">({dummyPlayerA.careerHighDate})</span></div>
-                <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Career High Rank</div>
-                <div className="w-1/3 text-right font-bold text-slate-800">#{dummyPlayerB.careerHigh} <span className="text-xs font-normal text-slate-500">({dummyPlayerB.careerHighDate})</span></div>
-              </div>
-            </div>
-
-            {/* Ranking Timeline Comparison Chart Placeholder */}
-            <div className="mt-4">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 px-4">Ranking Timeline Comparison</div>
-              <div className="w-full h-48 bg-slate-50 rounded-2xl border border-slate-100 relative overflow-hidden flex flex-col items-center justify-center">
-                <div className="flex items-center gap-6 mb-4">
-                  <div className="flex items-center gap-2 text-xs font-bold"><span className="w-3 h-3 rounded-full bg-[#FA2E72]"></span> {dummyPlayerA.name}</div>
-                  <div className="flex items-center gap-2 text-xs font-bold"><span className="w-3 h-3 rounded-full bg-indigo-600"></span> {dummyPlayerB.name}</div>
+              {/* Headers */}
+              <div className="flex items-center justify-between px-2 sm:px-6">
+                <div className="flex items-center gap-3 w-5/12">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-xs shrink-0 bg-slate-200 flex items-center justify-center">
+                    <AthleteImage
+                      src={playerA.imageUrl}
+                      alt="A"
+                      width={40}
+                      height={40}
+                      className="object-cover w-full h-full"
+                      fallbackLetter={playerA.name.charAt(0)}
+                    />
+                  </div>
+                  <div className="overflow-hidden">
+                    <div className="font-bold text-slate-900 text-sm truncate">{playerA.name}</div>
+                    <div className="text-[10px] font-semibold text-slate-500 truncate">{playerA.country}</div>
+                  </div>
                 </div>
-                {/* SVG Graph placeholder mimicking design */}
-                <svg width="80%" height="80%" viewBox="0 0 400 100" preserveAspectRatio="none" className="opacity-80">
-                  <path d="M0,80 Q50,70 100,50 T200,40 T300,40 T400,30" fill="none" stroke="#FA2E72" strokeWidth="2" />
-                  <path d="M0,95 Q50,90 100,60 T200,65 T300,85 T400,40" fill="none" stroke="#4f46e5" strokeWidth="2" />
-                  {/* Dots */}
-                  <circle cx="100" cy="50" r="3" fill="#FA2E72" />
-                  <circle cx="200" cy="40" r="3" fill="#FA2E72" />
-                  <circle cx="300" cy="40" r="3" fill="#FA2E72" />
-                  <circle cx="100" cy="60" r="3" fill="#4f46e5" />
-                  <circle cx="200" cy="65" r="3" fill="#4f46e5" />
-                  <circle cx="300" cy="85" r="3" fill="#4f46e5" />
-                </svg>
+
+                <div className="text-slate-300 font-bold text-xs">VS</div>
+
+                <div className="flex items-center gap-3 justify-end w-5/12 text-right">
+                  <div className="overflow-hidden">
+                    <div className="font-bold text-slate-900 text-sm truncate">{playerB.name}</div>
+                    <div className="text-[10px] font-semibold text-slate-500 truncate">{playerB.country}</div>
+                  </div>
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-xs shrink-0 bg-slate-200 flex items-center justify-center">
+                    <AthleteImage
+                      src={playerB.imageUrl}
+                      alt="B"
+                      width={40}
+                      height={40}
+                      className="object-cover w-full h-full"
+                      fallbackLetter={playerB.name.charAt(0)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats Table */}
+              <div className="flex flex-col text-sm">
+                <div className="bg-slate-50 rounded-xl px-4 py-2 mb-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                  Summary Statistics
+                </div>
+
+                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
+                  <div className="w-1/3 text-left font-bold text-slate-800">{playerA.age ? `${playerA.age} Yrs` : 'N/A'}</div>
+                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Age</div>
+                  <div className="w-1/3 text-right font-bold text-slate-800">{playerB.age ? `${playerB.age} Yrs` : 'N/A'}</div>
+                </div>
+
+                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
+                  <div className="w-1/3 text-left font-bold text-slate-800">{playerA.country}</div>
+                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Country</div>
+                  <div className="w-1/3 text-right font-bold text-slate-800">{playerB.country}</div>
+                </div>
+
+                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
+                  <div className="w-1/3 text-left font-bold text-slate-800">
+                    {playerA.winRate !== undefined ? `${playerA.winRate}%` : 'N/A'}
+                  </div>
+                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Win %</div>
+                  <div className="w-1/3 text-right font-bold text-slate-800">
+                    {playerB.winRate !== undefined ? `${playerB.winRate}%` : 'N/A'}
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4 bg-pink-50/50 rounded-lg my-1">
+                  <div className="w-1/3 text-left font-bold text-[#FA2E72]">#{playerA.ranking}</div>
+                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Current Rank</div>
+                  <div className="w-1/3 text-right font-bold text-indigo-600">#{playerB.ranking}</div>
+                </div>
+
+                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
+                  <div className="w-1/3 text-left font-bold text-[#FA2E72]">
+                    #{playerA.careerHighRank || playerA.ranking}
+                  </div>
+                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Career High Rank</div>
+                  <div className="w-1/3 text-right font-bold text-indigo-600">
+                    #{playerB.careerHighRank || playerB.ranking}
+                  </div>
+                </div>
+              </div>
+
+              {/* Ranking Timeline Comparison Chart */}
+              <div className="mt-2">
+                <div className="flex items-center justify-between mb-3 px-2">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Historical Ranking Comparison
+                  </span>
+                  <div className="flex items-center gap-4 text-xs font-bold">
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#FA2E72]"></span> {playerA.name}</span>
+                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-600"></span> {playerB.name}</span>
+                  </div>
+                </div>
+
+                <div className="w-full h-64 bg-slate-50 rounded-2xl border border-slate-100 relative p-4 flex flex-col justify-end">
+                  <div className="flex justify-between text-[11px] font-bold text-slate-400 mb-1">
+                    <span>Rank #{minRank} (Top)</span>
+                    <span>Higher Line = Better World Rank</span>
+                  </div>
+
+                  <div className="relative w-full h-44">
+                    <svg
+                      viewBox={`0 0 ${svgW} ${svgH}`}
+                      className="w-full h-full overflow-visible pointer-events-none"
+                      preserveAspectRatio="none"
+                    >
+                      {/* Player A Connected Line */}
+                      {pathA && (
+                        <path
+                          d={pathA}
+                          fill="none"
+                          stroke="#FA2E72"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+                      {/* Player B Connected Line */}
+                      {pathB && (
+                        <path
+                          d={pathB}
+                          fill="none"
+                          stroke="#4F46E5"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )}
+                    </svg>
+
+                    {/* Dots Overlaid for Player A */}
+                    <div className="absolute inset-0 pointer-events-none">
+                      {pointsA.map((cp, i) => {
+                        const leftPercent = (cp.x / svgW) * 100;
+                        const topPercent = (cp.y / svgH) * 100;
+                        return (
+                          <div
+                            key={`a-${i}`}
+                            className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+                            style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
+                          >
+                            <span className="text-[9px] font-extrabold text-[#FA2E72] bg-white/90 backdrop-blur-xs px-1 rounded shadow-2xs border border-pink-100 -translate-y-4 whitespace-nowrap">
+                              #{cp.pt.ranking}
+                            </span>
+                            <div className="w-3 h-3 rounded-full bg-[#FA2E72] border-2 border-white shadow-xs"></div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Dots Overlaid for Player B */}
+                      {pointsB.map((cp, i) => {
+                        const leftPercent = (cp.x / svgW) * 100;
+                        const topPercent = (cp.y / svgH) * 100;
+                        return (
+                          <div
+                            key={`b-${i}`}
+                            className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+                            style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
+                          >
+                            <div className="w-3 h-3 rounded-full bg-[#4F46E5] border-2 border-white shadow-xs"></div>
+                            <span className="text-[9px] font-extrabold text-[#4F46E5] bg-white/90 backdrop-blur-xs px-1 rounded shadow-2xs border border-indigo-100 translate-y-4 whitespace-nowrap">
+                              #{cp.pt.ranking}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-
-          </div>
+          )}
         </div>
       </div>
 
+      {/* Athlete Search Modal */}
+      {searchModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-xl border border-slate-100 flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base">
+                Select Athlete for Player {searchModalOpen}
+              </h3>
+              <button
+                onClick={() => setSearchModalOpen(null)}
+                className="p-1 hover:bg-slate-100 rounded-full text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search athlete by name..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-full py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-[#FA2E72]"
+                autoFocus
+              />
+            </div>
+
+            <div className="max-h-60 overflow-y-auto flex flex-col gap-2">
+              {searching ? (
+                <div className="py-8 flex justify-center">
+                  <Loader2 className="w-6 h-6 text-[#FA2E72] animate-spin" />
+                </div>
+              ) : searchResults.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  Type a name to search athletes...
+                </div>
+              ) : (
+                searchResults.map((athlete) => (
+                  <div
+                    key={athlete.id}
+                    onClick={() => selectAthlete(athlete)}
+                    className="p-3 rounded-2xl hover:bg-pink-50 flex items-center justify-between cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs">
+                        <AthleteImage
+                          src={athlete.imageUrl}
+                          alt={athlete.name}
+                          width={32}
+                          height={32}
+                          className="object-cover"
+                          fallbackLetter={athlete.name.charAt(0)}
+                        />
+                      </div>
+                      <div>
+                        <div className="font-bold text-slate-800 text-sm">{athlete.name}</div>
+                        <div className="text-[11px] text-slate-400">{athlete.country}</div>
+                      </div>
+                    </div>
+                    <div className="text-xs font-bold text-[#FA2E72]">Rank #{athlete.ranking}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-8 h-8 text-[#FA2E72] animate-spin" />
+        <span className="text-xs text-slate-400">Loading compare tool...</span>
+      </div>
+    }>
+      <ComparePageContent />
+    </Suspense>
   );
 }

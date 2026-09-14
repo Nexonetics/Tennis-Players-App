@@ -1,256 +1,391 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, use, Suspense } from 'react';
 import Image from 'next/image';
-import { Calendar, User, Trophy, Medal, Star, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { Calendar, User, Trophy, Medal, Star, TrendingUp, ArrowLeftRight, Loader2 } from 'lucide-react';
+import { UnifiedAthlete, HistoryPoint } from '@/types';
 
-export default function PlayerPage() {
-  const dummyPlayer = {
-    name: 'Wang Chuqin',
-    sport: 'Table Tennis',
-    country: 'China',
-    countryCode: 'CHN',
-    gender: 'Men',
-    age: 26,
-    style: 'Right Handed',
-    currentRank: 1,
-    careerHigh: 1,
-    careerHighDate: 'Jul 2023',
-    winRate: 78.4,
-    quote: 'Discipline turns talent into greatness.',
-    image: 'https://i.pravatar.cc/300?img=33',
-    banner: 'https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=2000&auto=format&fit=crop'
-  };
+// Safe Athlete Image component with onError fallback
+const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
+  src?: string;
+  alt: string;
+  width: number;
+  height: number;
+  className?: string;
+  fallbackLetter: string;
+}) => {
+  const [hasError, setHasError] = useState(false);
+
+  if (!src || hasError) {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-600 text-white font-bold text-4xl flex items-center justify-center">
+        {fallbackLetter}
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-10">
-      
+    <Image
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      className={className}
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
+function PlayerPageContent({ playerId }: { playerId: string }) {
+  const searchParams = useSearchParams();
+  const sportParam = searchParams.get('sport') || 'Tennis';
+
+  const [athlete, setAthlete] = useState<UnifiedAthlete | null>(null);
+  const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPlayerData() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/players/${playerId}?sport=${encodeURIComponent(sportParam)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAthlete(data.athlete || null);
+          setHistory(data.history || []);
+        }
+      } catch (err) {
+        console.error('Failed to load player details', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchPlayerData();
+  }, [playerId, sportParam]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-28 gap-4">
+        <Loader2 className="w-12 h-12 text-[#FA2E72] animate-spin" />
+        <span className="text-sm font-semibold text-slate-500">Loading player profile...</span>
+      </div>
+    );
+  }
+
+  if (!athlete) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 max-w-xl mx-auto text-center">
+        <h2 className="text-2xl font-bold text-slate-800">Athlete Not Found</h2>
+        <p className="text-slate-500 text-sm">We couldn't find an athlete matching this ID in the local dataset.</p>
+        <Link href="/rankings" className="mt-4 px-6 py-2.5 bg-[#FA2E72] text-white rounded-full text-sm font-bold shadow-sm">
+          Return to Rankings
+        </Link>
+      </div>
+    );
+  }
+
+  // Format ranking history for SVG chart
+  const recentHistory = history.length > 0 ? history.slice(-12) : [];
+  const minRankInHist = recentHistory.length > 0 ? Math.min(...recentHistory.map((h) => h.ranking)) : athlete.ranking;
+  const maxRankInHist = recentHistory.length > 0 ? Math.max(...recentHistory.map((h) => h.ranking)) : athlete.ranking + 10;
+  const rankSpan = Math.max(1, maxRankInHist - minRankInHist);
+
+  // SVG dimensions for smooth connected graph
+  const svgWidth = 800;
+  const svgHeight = 160;
+  const paddingX = 40;
+  const paddingY = 25;
+  const usableW = svgWidth - 2 * paddingX;
+  const usableH = svgHeight - 2 * paddingY;
+
+  const chartPoints = recentHistory.map((pt, i) => {
+    const x = recentHistory.length === 1 ? svgWidth / 2 : paddingX + (i / (recentHistory.length - 1)) * usableW;
+    const norm = (pt.ranking - minRankInHist) / rankSpan;
+    const y = paddingY + norm * usableH;
+    return { x, y, pt };
+  });
+
+  const linePathD = chartPoints.length > 0
+    ? chartPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+    : '';
+
+  const areaPathD = chartPoints.length > 0
+    ? `${linePathD} L ${chartPoints[chartPoints.length - 1].x.toFixed(1)} ${svgHeight} L ${chartPoints[0].x.toFixed(1)} ${svgHeight} Z`
+    : '';
+
+  return (
+    <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-12">
       {/* Hero Banner */}
       <div className="w-full h-48 rounded-3xl overflow-hidden relative shadow-sm border border-slate-200">
         <div className="absolute inset-0 z-0">
           <Image
-            src={dummyPlayer.banner}
+            src="https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=2000&auto=format&fit=crop"
             alt="Player Banner"
             fill
+            sizes="100vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0A2342] via-[#0A2342]/80 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0A2342] via-[#0A2342]/90 to-transparent"></div>
         </div>
         <div className="relative z-10 flex items-center gap-6 px-10 h-full">
-          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg shrink-0">
-            <Image src={dummyPlayer.image} alt={dummyPlayer.name} width={128} height={128} className="object-cover" />
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-white shadow-lg shrink-0 bg-slate-200 flex items-center justify-center">
+            <AthleteImage
+              src={athlete.imageUrl}
+              alt={athlete.name}
+              width={128}
+              height={128}
+              className="object-cover w-full h-full"
+              fallbackLetter={athlete.name.charAt(0)}
+            />
           </div>
           <div className="flex flex-col text-white">
-            <div className="inline-flex items-center gap-1 px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-bold uppercase tracking-widest mb-2 border border-white/10 w-max">
-              <span className="text-[10px]">🔍</span> {dummyPlayer.sport}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-bold uppercase tracking-widest mb-2 border border-white/10 w-max">
+              <span>🏆</span> {athlete.sport}
             </div>
-            <h1 className="text-4xl font-extrabold mb-2 tracking-tight">{dummyPlayer.name}</h1>
-            <div className="flex items-center gap-3 text-sm font-medium text-slate-200">
-              <span className="flex items-center gap-1.5"><span className="text-base">🏳️</span> {dummyPlayer.country}</span>
-              <span className="w-1 h-1 rounded-full bg-slate-400"></span>
-              <span>{dummyPlayer.gender}</span>
-              <span className="w-1 h-1 rounded-full bg-slate-400"></span>
-              <span>{dummyPlayer.age} years</span>
+            <h1 className="text-3xl sm:text-4xl font-extrabold mb-2 tracking-tight">{athlete.name}</h1>
+            <div className="flex items-center gap-3 text-xs sm:text-sm font-medium text-slate-200">
+              <span className="flex items-center gap-1.5">{athlete.country} ({athlete.countryCode})</span>
+              {athlete.gender && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-slate-400"></span>
+                  <span>{athlete.gender}</span>
+                </>
+              )}
+              {athlete.age && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-slate-400"></span>
+                  <span>{athlete.age} years</span>
+                </>
+              )}
             </div>
-            <p className="mt-2 text-blue-100 text-sm max-w-md italic">
-              Power, precision and a relentless drive to be the best.
+            <p className="mt-2 text-pink-200 text-xs sm:text-sm max-w-md italic">
+              "Discipline and continuous dedication define peak performance."
             </p>
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
         {/* Left Sidebar: Quick Info */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-6">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-5">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
               <User className="w-5 h-5 text-[#FA2E72]" />
               Quick Info
             </h3>
 
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-lg">🏳️</div>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-base shrink-0">🏳️</div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-400">Country</div>
-                  <div className="font-bold text-slate-800">{dummyPlayer.country}</div>
+                  <div className="text-[11px] font-semibold text-slate-400">Country</div>
+                  <div className="font-bold text-slate-800 text-sm">{athlete.country}</div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500"><Calendar className="w-5 h-5" /></div>
+              {athlete.age && (
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-500 shrink-0">
+                    <Calendar className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-semibold text-slate-400">Age</div>
+                    <div className="font-bold text-slate-800 text-sm">{athlete.age} years</div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-600 shrink-0 text-base">
+                  🏓
+                </div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-400">Age</div>
-                  <div className="font-bold text-slate-800">{dummyPlayer.age} years</div>
+                  <div className="text-[11px] font-semibold text-slate-400">Playing Style</div>
+                  <div className="font-bold text-slate-800 text-sm">{athlete.playingStyle || 'Right Handed'}</div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center text-green-500">
-                  <span className="text-lg">🏓</span>
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500 shrink-0">
+                  <Trophy className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-400">Playing Style</div>
-                  <div className="font-bold text-slate-800">{dummyPlayer.style}</div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center text-amber-500"><Trophy className="w-5 h-5" /></div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-400">Current Rank</div>
-                  <div className="font-bold text-slate-800">#{dummyPlayer.currentRank}</div>
+                  <div className="text-[11px] font-semibold text-slate-400">Current Rank</div>
+                  <div className="font-bold text-slate-800 text-sm">#{athlete.ranking}</div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <span className="text-4xl text-pink-200 font-serif leading-none block mb-2">"</span>
-              <p className="text-slate-600 italic text-sm font-medium pr-4">
-                {dummyPlayer.quote}
-              </p>
-              <div className="w-6 h-1 bg-[#FA2E72] rounded-full mt-4"></div>
+            <div className="mt-4 pt-5 border-t border-slate-100">
+              <Link href={`/compare?player1=${athlete.id}&sport=${encodeURIComponent(athlete.sport)}`}>
+                <button className="w-full py-2.5 bg-pink-50 hover:bg-[#FA2E72] text-[#FA2E72] hover:text-white rounded-full text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer">
+                  <ArrowLeftRight className="w-4 h-4" /> Compare with Another Athlete
+                </button>
+              </Link>
             </div>
           </div>
         </div>
 
         {/* Right Content */}
         <div className="lg:col-span-9 flex flex-col gap-6">
-          
           {/* Ranking Progress Chart */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-6">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-6">
             <div className="flex items-center justify-between">
               <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
                 <TrendingUp className="w-5 h-5 text-[#FA2E72]" />
-                Ranking Progress
+                Ranking History & Trend
               </h3>
-              <button className="text-sm font-bold text-[#FA2E72] hover:text-[#E02263] bg-pink-50 hover:bg-pink-100 px-4 py-1.5 rounded-full transition-colors flex items-center gap-1">
-                View Full Stats →
-              </button>
+              <span className="text-xs font-semibold text-slate-400 bg-slate-50 px-3 py-1 rounded-full border border-slate-100">
+                {recentHistory.length} Recorded Data Points
+              </span>
             </div>
-            
-            <div className="w-full h-[240px] bg-gradient-to-b from-pink-50/50 to-white rounded-xl border border-pink-100/50 flex flex-col relative overflow-hidden">
-              <div className="absolute inset-0 opacity-20">
-                <svg width="100%" height="100%" preserveAspectRatio="none">
-                  <path d="M0 180 Q 200 120, 400 150 T 800 50 L 800 240 L 0 240 Z" fill="#FA2E72" />
-                </svg>
-              </div>
-              
-              <div className="flex-1 flex items-end justify-between px-6 pb-8 pt-4 relative z-10">
-                {/* Dummy points for the graph */}
-                {[
-                  { month: 'Oct \'24', rank: 18 },
-                  { month: 'Nov \'24', rank: 12 },
-                  { month: 'Dec \'24', rank: 10 },
-                  { month: 'Jan \'25', rank: 14 },
-                  { month: 'Feb \'25', rank: 17 },
-                  { month: 'Mar \'25', rank: 12 },
-                  { month: 'Apr \'25', rank: 7 },
-                  { month: 'May \'25', rank: 5 },
-                  { month: 'Jun \'25', rank: 2 },
-                  { month: 'Jul \'25', rank: 3 },
-                  { month: 'Aug \'25', rank: 1 },
-                  { month: 'Sep \'25', rank: 1 },
-                ].map((pt, i) => (
-                  <div key={i} className="flex flex-col items-center gap-2 relative h-full justify-end">
-                    <span className="text-[10px] font-bold text-[#FA2E72] mb-1 absolute" style={{ bottom: `${100 - (pt.rank * 4)}%` }}>#{pt.rank}</span>
-                    <div className="w-2 h-2 rounded-full bg-[#FA2E72] shadow-sm z-10 absolute" style={{ bottom: `calc(${100 - (pt.rank * 4)}% - 10px)` }}></div>
-                    <span className="text-[10px] font-semibold text-slate-400 absolute bottom-0 translate-y-6">{pt.month}</span>
+
+            {recentHistory.length > 0 ? (
+              <div className="w-full h-64 bg-gradient-to-b from-pink-50/40 to-white rounded-2xl border border-pink-100 flex flex-col relative overflow-hidden p-4">
+                <div className="relative w-full h-full">
+                  {/* Connected SVG Line & Gradient Overlay */}
+                  <svg
+                    viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+                    className="w-full h-full overflow-visible pointer-events-none"
+                    preserveAspectRatio="none"
+                  >
+                    <defs>
+                      <linearGradient id="chartAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#FA2E72" stopOpacity="0.25" />
+                        <stop offset="100%" stopColor="#FA2E72" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* Gradient Area under line */}
+                    {areaPathD && <path d={areaPathD} fill="url(#chartAreaGrad)" />}
+
+                    {/* Connected Trend Line */}
+                    {linePathD && (
+                      <path
+                        d={linePathD}
+                        fill="none"
+                        stroke="#FA2E72"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+                  </svg>
+
+                  {/* Node Dots, Rank Badges, & Date Labels Overlaid */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    {chartPoints.map((cp, i) => {
+                      const leftPercent = (cp.x / svgWidth) * 100;
+                      const topPercent = (cp.y / svgHeight) * 100;
+
+                      return (
+                        <div
+                          key={i}
+                          className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
+                          style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
+                        >
+                          {/* Rank Label above node */}
+                          <span className="text-[10px] font-extrabold text-[#FA2E72] bg-white/90 backdrop-blur-xs px-1.5 py-0.5 rounded-md shadow-xs border border-pink-100 -translate-y-6 whitespace-nowrap">
+                            #{cp.pt.ranking}
+                          </span>
+
+                          {/* Node Dot */}
+                          <div className="w-3.5 h-3.5 rounded-full bg-[#FA2E72] border-2 border-white shadow-sm ring-2 ring-pink-200"></div>
+
+                          {/* Date Label below node */}
+                          <span className="text-[9px] font-semibold text-slate-400 translate-y-5 whitespace-nowrap">
+                            {cp.pt.date}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-                
-                {/* SVG Line */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 5 }}>
-                  <path d="M 30 180 Q 100 130, 180 150 T 330 110 T 480 80 T 630 30 T 780 30" fill="none" stroke="#FA2E72" strokeWidth="2" />
-                </svg>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="w-full h-40 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold">
+                No historical ranking chart points available for this athlete.
+              </div>
+            )}
           </div>
 
           {/* Player Statistics */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
-                <span className="text-[#FA2E72]">🌸</span>
-                Player Statistics
-              </h3>
-              <div className="flex items-center gap-2 text-sm text-[#FA2E72] font-semibold bg-pink-50 px-3 py-1.5 rounded-lg border border-pink-100">
-                <Calendar className="w-4 h-4" />
-                Latest ▾
-              </div>
-            </div>
-            
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-6">
+            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
+              <Medal className="w-5 h-5 text-[#FA2E72]" />
+              Detailed Player Statistics
+            </h3>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-sm"><Trophy className="w-5 h-5" /></div>
+              <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                  <Trophy className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="text-xs font-semibold text-slate-400">Current Rank</div>
-                  <div className="font-bold text-slate-800 text-lg">#{dummyPlayer.currentRank}</div>
+                  <div className="text-xs font-semibold text-slate-400">Current World Rank</div>
+                  <div className="font-bold text-slate-800 text-lg">#{athlete.ranking}</div>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-sm"><TrendingUp className="w-5 h-5" /></div>
+              <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                  <TrendingUp className="w-5 h-5" />
+                </div>
                 <div>
                   <div className="text-xs font-semibold text-slate-400">Career High Rank</div>
-                  <div className="font-bold text-slate-800 text-lg">#{dummyPlayer.careerHigh} ({dummyPlayer.careerHighDate})</div>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-sm"><User className="w-5 h-5" /></div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-400">Playing Style</div>
-                  <div className="font-bold text-slate-800 text-lg">{dummyPlayer.style}</div>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-sm"><Star className="w-5 h-5" /></div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-400">Win Rate</div>
-                    <div className="font-bold text-slate-800 text-lg">{dummyPlayer.winRate}%</div>
+                  <div className="font-bold text-slate-800 text-lg">
+                    #{athlete.careerHighRank || athlete.ranking}
+                    {athlete.careerHighDate && <span className="text-xs text-slate-500 font-normal"> ({athlete.careerHighDate})</span>}
                   </div>
                 </div>
-                <div className="w-12 h-12 rounded-full border-4 border-[#FA2E72] border-r-pink-100 flex items-center justify-center"></div>
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
+                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-semibold text-slate-400">Playing Style</div>
+                  <div className="font-bold text-slate-800 text-lg">{athlete.playingStyle || 'Standard'}</div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                    <Star className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-semibold text-slate-400">Win Rate</div>
+                    <div className="font-bold text-slate-800 text-lg">
+                      {athlete.winRate !== undefined ? `${athlete.winRate}%` : '75.0%'}
+                    </div>
+                  </div>
+                </div>
+                <div className="w-10 h-10 rounded-full border-4 border-[#FA2E72] border-r-pink-100 flex items-center justify-center text-[10px] font-bold text-[#FA2E72]">
+                  {athlete.winRate !== undefined ? `${Math.round(athlete.winRate)}%` : '75%'}
+                </div>
               </div>
             </div>
-
-            {/* Bottom button */}
-            <div className="mt-2 bg-pink-50 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:bg-[#FA2E72] hover:text-white transition-colors group text-[#FA2E72] border border-pink-100">
-              <div className="flex items-center gap-3">
-                <Medal className="w-5 h-5 group-hover:text-white" />
-                <span className="font-bold">Career Performance</span>
-              </div>
-              <ChevronRight size={20} strokeWidth={2.5} />
-            </div>
-
           </div>
-
         </div>
       </div>
     </div>
   );
 }
 
-// Temporary ChevronRight since it was missing
-function ChevronRight(props: any) {
+export default function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = use(params);
   return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-8 h-8 text-[#FA2E72] animate-spin" />
+        <span className="text-xs text-[#FA2E72]">Loading player details...</span>
+      </div>
+    }>
+      <PlayerPageContent playerId={resolvedParams.id} />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { ArrowRight, Radio } from 'lucide-react';
 
 export const HeroBanner: React.FC = () => {
@@ -14,6 +15,7 @@ export const HeroBanner: React.FC = () => {
         src="/images/hero-tennis.jpg"
         alt="Game On Tennis Court"
         fill
+        sizes="100vw"
         className="object-cover object-center"
         priority
       />
@@ -28,10 +30,10 @@ export const HeroBanner: React.FC = () => {
           <div className="flex items-center gap-2 mb-2.5">
             <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1e293b]/90 border border-indigo-400/30 text-indigo-200 text-xs font-medium backdrop-blur-xs">
               <Radio className="w-3 h-3 text-indigo-400 animate-pulse" />
-              <span>Live Matches</span>
+              <span>Cached Local Database</span>
             </div>
             <div className="px-3 py-1 rounded-full bg-[#FA2E72] text-white text-xs font-semibold shadow-xs">
-              Live Now
+              Next.js Web
             </div>
           </div>
 
@@ -42,16 +44,18 @@ export const HeroBanner: React.FC = () => {
 
           {/* Subtitle */}
           <p className="text-xs text-slate-300 max-w-sm font-normal leading-relaxed">
-            Live scores, player rankings, tournaments and more — all in one place.
+            Live rankings, 14,000+ cached player profiles, statistics & history graphs.
           </p>
         </div>
 
         {/* CTA Button & Pagination Dots Row */}
         <div className="flex items-end justify-between">
-          <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FA2E72] hover:bg-[#E02263] text-white text-xs font-semibold shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer">
-            <span>Explore Live Matches</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
+          <Link href="/rankings">
+            <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#FA2E72] hover:bg-[#E02263] text-white text-xs font-semibold shadow-md transition-all duration-200 hover:scale-[1.02] cursor-pointer">
+              <span>Explore World Rankings</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </Link>
 
           {/* Slider Pagination Indicators */}
           <div className="flex items-center gap-1.5 pb-1">
