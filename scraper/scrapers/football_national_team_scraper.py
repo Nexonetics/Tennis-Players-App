@@ -44,15 +44,16 @@ class FootballNationalTeamScraper(BaseScraper):
             response = requests.get(url, timeout=10)
             if response.status_code == 200:
                 pattern = r"FRS_Male_Football_[0-9]+" if category == "men" else r"FRS_Female_Football_[0-9]+"
-                match = re.search(pattern, response.text)
-                if match:
-                    log.info(f"Found schedule ID: {match.group(0)}")
-                    return match.group(0)
+                matches = re.findall(pattern, response.text)
+                if matches:
+                    latest = sorted(list(set(matches)), reverse=True)[0]
+                    log.info(f"Found latest schedule ID: {latest}")
+                    return latest
         except Exception as e:
             log.error(f"Error detecting schedule ID: {e}")
             
-        # Fallbacks (current as of May 2026)
-        return "FRS_Male_Football_20260119" if category == "men" else "FRS_Female_Football_20251207"
+        # Fallbacks (current as of 2026)
+        return "FRS_Male_Football_20260611" if category == "men" else "FRS_Female_Football_20260419"
 
     def scrape_fifa_rankings(self, category):
         schedule_id = self.get_latest_schedule_id(category)
@@ -60,7 +61,6 @@ class FootballNationalTeamScraper(BaseScraper):
         
         log.info(f"Fetching {category} rankings from FIFA API: {api_url}")
         
-        # FIFA API often requires specific headers to avoid being blocked
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Origin": "https://www.fifa.com",
@@ -84,26 +84,23 @@ class FootballNationalTeamScraper(BaseScraper):
         saved = 0
         for entry in results:
             try:
-                # Extract basic info from API
                 team_name_list = entry.get('TeamName', [])
                 if not team_name_list: continue
                 
                 name = team_name_list[0].get('Description')
                 ranking = entry.get('Rank')
                 confederation = entry.get('ConfederationName', 'Unknown')
+                points = entry.get('TotalPoints', 0.0)
                 
-                # Some teams might have Rank null if they are inactive but in list
                 if ranking is None:
-                    ranking = 999 # Placeholder for unranked
+                    ranking = 999
                 
-                log.info(f"Processing {category} team: {name} (Rank {ranking})")
+                log.info(f"Processing {category} team: {name} (Rank {ranking}, Points {points})")
                 
-                # Enrich with Wikipedia data
-                team_data = self._build_team_data(name, category, ranking, confederation)
+                team_data = self._build_team_data(name, category, ranking, confederation, points)
                 save_football_national_team(team_data)
                 saved += 1
                 
-                # Avoid overwhelming Wikipedia API
                 if saved % 20 == 0:
                     import time
                     time.sleep(0.5)
@@ -113,21 +110,18 @@ class FootballNationalTeamScraper(BaseScraper):
                 
         return saved
 
-    def _build_team_data(self, name, category, ranking, confederation):
-        # Wikipedia lookup name
+    def _build_team_data(self, name, category, ranking, confederation, points=0.0):
         wiki_name = f"{name} national football team"
         if category == "women":
             wiki_name = f"{name} women's national football team"
             
         summary_data = self._fetch_wiki_summary(wiki_name)
         if not summary_data:
-            # Fallback to just country name
             summary_data = self._fetch_wiki_summary(name)
             
         description = summary_data.get('extract', f"The {name} national {category}'s football team.")
         image_url = summary_data.get('thumbnail', {}).get('source')
         
-        # Scrape real honors
         wc_titles, cc_titles, cc_name = self._scrape_honors(name, category, confederation)
         
         return {
@@ -135,13 +129,14 @@ class FootballNationalTeamScraper(BaseScraper):
             "country": name,
             "confederation": confederation,
             "category": category,
-            "founded_year": 1900, # Placeholder, could be scraped too
+            "founded_year": 1900,
             "stadium": f"National Stadium of {name}",
             "nickname": f"The {name} Team",
             "image_url": image_url,
             "website": f"https://en.wikipedia.org/wiki/{wiki_name.replace(' ', '_')}",
             "description": description,
             "ranking": ranking,
+            "points": points,
             "total_trophies": wc_titles + cc_titles,
             "world_cup_titles": wc_titles,
             "manager": "TBD",

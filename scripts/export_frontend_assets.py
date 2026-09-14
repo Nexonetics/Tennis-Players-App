@@ -28,7 +28,9 @@ except Exception:
     print('Please install requests (pip install requests) in your Python environment')
     raise
 
-OUT_DIR = os.path.join('frontend', 'assets', 'data')
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, '..'))
+OUT_DIR = os.path.join(project_root, 'frontend', 'assets', 'data')
 os.makedirs(OUT_DIR, exist_ok=True)
 
 def paged_fetch(session, url, params=None, page_size=50, timeout=120):

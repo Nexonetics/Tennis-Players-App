@@ -21,6 +21,9 @@ load_dotenv(os.path.join(project_root, 'backend', '.env'))
 from app.db.session import SessionLocal
 from app.models.player import Player, TennisHistoricalPlayer, TennisHistoricalRanking
 from app.models.tt_player import TableTennisPlayer, TableTennisHistoricalPlayer, TableTennisHistoricalRanking
+from app.models.football_national_team import FootballNationalTeam, FootballHistoricalTeam, FootballHistoricalRanking
+from app.models.basketball_national_team import BasketballNationalTeam, BasketballHistoricalTeam, BasketballHistoricalRanking
+from app.models.basketball_club import BasketballClub
 
 OUT_DIR = os.path.join(project_root, 'frontend', 'assets', 'data')
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -74,8 +77,12 @@ def export_all():
         latest_ranks_m = {}
         latest_ranks_f = {}
 
-        # Latest date snapshot is 2026-09-09
-        target_year, target_month, target_date = 2026, 9, 9
+        # Dynamically detect the latest ranking date from DB
+        target_year, target_month, target_date = 1970, 1, 1
+        if all_tr:
+            latest_tr = all_tr[-1]
+            target_year, target_month, target_date = latest_tr.ranking_year, latest_tr.ranking_month, latest_tr.ranking_date
+            print(f"   Tennis latest date detected: {target_year}-{target_month:02d}-{target_date:02d}")
 
         for r in all_tr:
             spid = str(r.player_id)
@@ -245,6 +252,130 @@ def export_all():
         with open(os.path.join(OUT_DIR, 'tt_player_histories.json'), 'w', encoding='utf-8') as f:
             json.dump(tt_histories, f, ensure_ascii=False, indent=2)
         print(f"   Saved {os.path.join(OUT_DIR, 'tt_player_histories.json')} ({len(tt_histories)} TT players)")
+
+        # -------------------------------------------------------------
+        # 4. FOOTBALL NATIONAL TEAMS & HISTORIES
+        # -------------------------------------------------------------
+        print("\n4. Exporting Football National Teams & Histories...")
+        fb_teams = db.query(FootballNationalTeam).order_by(FootballNationalTeam.category.asc(), FootballNationalTeam.ranking.asc()).all()
+        fb_export = []
+        for t in fb_teams:
+            fb_export.append({
+                "id": t.id,
+                "name": t.name,
+                "country": t.country or t.name,
+                "confederation": t.confederation,
+                "founded_year": t.founded_year or 1900,
+                "stadium": t.stadium,
+                "manager": t.manager or "TBD",
+                "nickname": t.nickname,
+                "image_url": t.image_url,
+                "website": t.website,
+                "description": t.description,
+                "ranking": t.ranking,
+                "category": t.category,
+                "total_trophies": t.total_trophies or 0,
+                "world_cup_titles": t.world_cup_titles or 0,
+                "captain": t.captain or "TBD",
+                "main_rivals": t.main_rivals or "Neighboring Countries",
+                "honors_json": t.honors_json or {},
+                "last_updated": t.last_updated.isoformat() if t.last_updated else None,
+                "ranking_history": None
+            })
+        with open(os.path.join(OUT_DIR, 'football_national_teams.json'), 'w', encoding='utf-8') as f:
+            json.dump(fb_export, f, ensure_ascii=False, indent=2)
+        print(f"   Saved {os.path.join(OUT_DIR, 'football_national_teams.json')} ({len(fb_export)} Football teams)")
+
+        fb_histories = {}
+        all_fb_hist = db.query(FootballHistoricalRanking).all()
+        for r in all_fb_hist:
+            tid = str(r.team_id)
+            dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
+            fb_histories.setdefault(tid, []).append({"rank": r.rank, "points": r.points, "date": dt_str})
+        with open(os.path.join(OUT_DIR, 'football_team_histories.json'), 'w', encoding='utf-8') as f:
+            json.dump(fb_histories, f, ensure_ascii=False, indent=2)
+        print(f"   Saved {os.path.join(OUT_DIR, 'football_team_histories.json')} ({len(fb_histories)} Football team histories)")
+
+        # -------------------------------------------------------------
+        # 5. BASKETBALL NATIONAL TEAMS & HISTORIES
+        # -------------------------------------------------------------
+        print("\n5. Exporting Basketball National Teams & Histories...")
+        bb_teams = db.query(BasketballNationalTeam).order_by(BasketballNationalTeam.category.asc(), BasketballNationalTeam.ranking.asc()).all()
+        bb_export = []
+        for t in bb_teams:
+            bb_export.append({
+                "id": t.id,
+                "name": t.name,
+                "country": t.country or t.name,
+                "confederation": t.confederation,
+                "founded_year": t.founded_year or 1900,
+                "stadium": t.stadium,
+                "manager": t.manager or "TBD",
+                "nickname": t.nickname,
+                "image_url": t.image_url,
+                "website": t.website,
+                "description": t.description,
+                "ranking": t.ranking,
+                "category": t.category,
+                "total_trophies": t.total_trophies or 0,
+                "world_cup_titles": t.world_cup_titles or 0,
+                "captain": t.captain or "TBD",
+                "main_rivals": t.main_rivals or "Neighboring Countries",
+                "honors_json": t.honors_json or {},
+                "last_updated": t.last_updated.isoformat() if t.last_updated else None,
+                "ranking_history": None
+            })
+        with open(os.path.join(OUT_DIR, 'basketball_national_teams.json'), 'w', encoding='utf-8') as f:
+            json.dump(bb_export, f, ensure_ascii=False, indent=2)
+        print(f"   Saved {os.path.join(OUT_DIR, 'basketball_national_teams.json')} ({len(bb_export)} Basketball teams)")
+
+        bb_histories = {}
+        all_bb_hist = db.query(BasketballHistoricalRanking).all()
+        for r in all_bb_hist:
+            tid = str(r.team_id)
+            dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
+            bb_histories.setdefault(tid, []).append({"rank": r.rank, "points": r.points, "date": dt_str})
+        with open(os.path.join(OUT_DIR, 'basketball_team_histories.json'), 'w', encoding='utf-8') as f:
+            json.dump(bb_histories, f, ensure_ascii=False, indent=2)
+        print(f"   Saved {os.path.join(OUT_DIR, 'basketball_team_histories.json')} ({len(bb_histories)} Basketball team histories)")
+
+        # -------------------------------------------------------------
+        # 6. BASKETBALL CLUBS
+        # -------------------------------------------------------------
+        print("\n6. Exporting Basketball Clubs...")
+        bb_clubs = db.query(BasketballClub).all()
+        bc_export = []
+        for c in bb_clubs:
+            bc_export.append({
+                "id": c.id,
+                "name": c.name,
+                "city": c.city,
+                "country": c.country,
+                "league": c.league,
+                "conference": c.conference,
+                "founded_year": c.founded_year,
+                "arena": c.arena,
+                "capacity": c.capacity,
+                "head_coach": c.head_coach,
+                "nickname": c.nickname,
+                "image_url": c.image_url,
+                "website": c.website,
+                "description": c.description,
+                "ranking": c.ranking,
+                "category": c.category,
+                "titles": c.titles or 0,
+                "playoff_appearances": c.playoff_appearances or 0,
+                "market_value": c.market_value,
+                "current_season_record": c.current_season_record,
+                "star_player": c.star_player,
+                "owner": c.owner,
+                "general_manager": c.general_manager,
+                "honors_json": c.honors_json or {},
+                "last_updated": c.last_updated.isoformat() if c.last_updated else None
+            })
+        with open(os.path.join(OUT_DIR, 'basketball_clubs.json'), 'w', encoding='utf-8') as f:
+            json.dump(bc_export, f, ensure_ascii=False, indent=2)
+        print(f"   Saved {os.path.join(OUT_DIR, 'basketball_clubs.json')} ({len(bc_export)} Basketball clubs)")
 
         print("\n" + "=" * 60)
         print(f"ALL LOCAL ASSETS EXPORTED IN {time.time()-t0:.2f} SECONDS!")
