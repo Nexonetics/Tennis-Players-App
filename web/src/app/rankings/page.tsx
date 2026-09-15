@@ -65,6 +65,16 @@ export default function RankingsPage() {
   }, [activeSport, activeCategory, page]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const sportParam = params.get('sport');
+      if (sportParam && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(sportParam)) {
+        setActiveSport(sportParam as 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     setPage(1);
   }, [activeSport, activeCategory]);
 

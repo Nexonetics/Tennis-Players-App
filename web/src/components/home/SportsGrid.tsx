@@ -57,7 +57,7 @@ export const SportsGrid: React.FC = () => {
       {sportCategories.map((sport) => (
         <Link
           key={sport.id}
-          href={`/rankings`}
+          href={`/rankings?sport=${encodeURIComponent(sport.title)}`}
           className="relative h-[138px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5"
         >
           {/* Background image */}
