@@ -99934,8 +99934,8 @@ A.a4M.prototype={
 $0(){return A.Z(A.cO("Player not found"))},
 $S:65}
 A.a4N.prototype={
-$1(a){var s=J.bu(a)
-return new A.ci(A.dy(s.h(a,"ranking")),A.eF(A.bk(s.h(a,"date"))))},
+$1(a){var s=J.bu(a),r=s.h(a,"ranking")
+return new A.ci(A.dy(r==null?s.h(a,"rank"):r),A.eF(A.bk(s.h(a,"date"))))},
 $S:46}
 A.a4U.prototype={
 $1(a){var s=a.d
@@ -99972,8 +99972,8 @@ A.a4S.prototype={
 $0(){return A.Z(A.cO("TT Player not found"))},
 $S:65}
 A.a4T.prototype={
-$1(a){var s=J.bu(a)
-return new A.ci(A.dy(s.h(a,"ranking")),A.eF(A.bk(s.h(a,"date"))))},
+$1(a){var s=J.bu(a),r=s.h(a,"ranking")
+return new A.ci(A.dy(r==null?s.h(a,"rank"):r),A.eF(A.bk(s.h(a,"date"))))},
 $S:46}
 A.a5r.prototype={
 $1(a){return B.c.u(a.b.toLowerCase(),this.a)},
@@ -99996,8 +99996,8 @@ A.a4J.prototype={
 $0(){return A.Z(A.cO("Football team not found"))},
 $S:65}
 A.a4K.prototype={
-$1(a){var s=J.bu(a)
-return new A.ci(A.dy(s.h(a,"ranking")),A.eF(A.bk(s.h(a,"date"))))},
+$1(a){var s=J.bu(a),r=s.h(a,"ranking")
+return new A.ci(A.dy(r==null?s.h(a,"rank"):r),A.eF(A.bk(s.h(a,"date"))))},
 $S:46}
 A.a5j.prototype={
 $1(a){return a.Q!=null},
@@ -100138,8 +100138,8 @@ A.a4G.prototype={
 $0(){return A.Z(A.cO("Basketball team not found"))},
 $S:65}
 A.a4H.prototype={
-$1(a){var s=J.bu(a)
-return new A.ci(A.dy(s.h(a,"ranking")),A.eF(A.bk(s.h(a,"date"))))},
+$1(a){var s=J.bu(a),r=s.h(a,"ranking")
+return new A.ci(A.dy(r==null?s.h(a,"rank"):r),A.eF(A.bk(s.h(a,"date"))))},
 $S:46}
 A.iY.prototype={
 l(a){return this.a},
