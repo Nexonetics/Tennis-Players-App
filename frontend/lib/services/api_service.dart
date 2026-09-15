@@ -226,7 +226,7 @@ class ApiService {
     if (rawHistory != null) {
       history = (rawHistory as List)
           .map((item) => RankingPoint(
-                ranking: item['ranking'] as int,
+                ranking: (item['ranking'] ?? item['rank']) as int,
                 date: DateTime.parse(item['date'] as String),
               ))
           .toList();
@@ -352,7 +352,7 @@ class ApiService {
     if (rawHistory != null) {
       history = (rawHistory as List)
           .map((item) => RankingPoint(
-                ranking: item['ranking'] as int,
+                ranking: (item['ranking'] ?? item['rank']) as int,
                 date: DateTime.parse(item['date'] as String),
               ))
           .toList();
@@ -766,7 +766,7 @@ class ApiService {
     if (rawHistory != null) {
       history = (rawHistory as List)
           .map((item) => RankingPoint(
-                ranking: item['ranking'] as int,
+                ranking: (item['ranking'] ?? item['rank']) as int,
                 date: DateTime.parse(item['date'] as String),
               ))
           .toList();
@@ -1121,7 +1121,7 @@ class ApiService {
     if (rawHistory != null) {
       history = (rawHistory as List)
           .map((item) => RankingPoint(
-                ranking: item['ranking'] as int,
+                ranking: (item['ranking'] ?? item['rank']) as int,
                 date: DateTime.parse(item['date'] as String),
               ))
           .toList();
