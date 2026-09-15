@@ -73,9 +73,20 @@ class _GraphPainter extends CustomPainter {
     final fillPath = Path();
 
     if (points.length == 1) {
-      double x = size.width / 2;
       double y = size.height / 2;
+      
+      final dashPaint = Paint()
+        ..color = color.withOpacity(0.5)
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke;
+        
+      double dashWidth = 5, dashSpace = 4, startX = 0;
+      while (startX < size.width) {
+        canvas.drawLine(Offset(startX, y), Offset(startX + dashWidth, y), dashPaint);
+        startX += dashWidth + dashSpace;
+      }
 
+      double x = size.width - 10;
       final dotPaint = Paint()..color = color;
       final dotBgPaint = Paint()..color = Colors.white;
       canvas.drawCircle(Offset(x, y), 5, dotBgPaint);
@@ -363,6 +374,41 @@ class _ComparisonGraphPainter extends CustomPainter {
     final fillPath = Path();
 
     final coords = points.map(getCoord).toList();
+
+    if (coords.length == 1) {
+      final c = coords[0];
+      final dashPaint = Paint()
+        ..color = color.withOpacity(0.5)
+        ..strokeWidth = 2
+        ..style = PaintingStyle.stroke;
+      
+      double dashWidth = 5, dashSpace = 4, startX = 0;
+      while (startX < c.dx) {
+        canvas.drawLine(Offset(startX, c.dy), Offset(startX + dashWidth, c.dy), dashPaint);
+        startX += dashWidth + dashSpace;
+      }
+      
+      final dotPaint = Paint()..color = color;
+      final dotBgPaint = Paint()..color = Colors.white;
+      canvas.drawCircle(c, 4, dotBgPaint);
+      canvas.drawCircle(c, 2.5, dotPaint);
+
+      final textPainter = TextPainter(
+        textDirection: ui.TextDirection.ltr,
+        textAlign: TextAlign.center,
+      );
+      textPainter.text = TextSpan(
+        text: '#${points[0].ranking}',
+        style: TextStyle(
+          color: color,
+          fontSize: 8.5,
+          fontWeight: FontWeight.bold,
+        ),
+      );
+      textPainter.layout();
+      textPainter.paint(canvas, Offset(c.dx - (textPainter.width / 2), c.dy - 14));
+      return;
+    }
 
     for (int i = 0; i < coords.length; i++) {
       final c = coords[i];
