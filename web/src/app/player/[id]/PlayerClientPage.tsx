@@ -200,14 +200,14 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
           </div>
 
           {/* Ranking History Chart Card */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-4 relative">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-[#FA2E72]" />
                   <span>Ranking History</span>
                 </h3>
-                <p className="text-xs text-slate-400">Historical performance trajectory</p>
+                <p className="text-xs text-slate-400">Historical performance trajectory (Top rank at top)</p>
               </div>
 
               {recentHistory.length > 0 && (
@@ -218,78 +218,134 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
             </div>
 
             {recentHistory.length > 0 ? (
-              <div className="w-full h-56 pt-4 relative flex flex-col justify-between">
-                {/* Visual Chart Grid */}
-                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
-                  <div className="border-b border-dashed border-slate-400 w-full" />
-                  <div className="border-b border-dashed border-slate-400 w-full" />
-                  <div className="border-b border-dashed border-slate-400 w-full" />
-                </div>
-
-                {/* SVG Line Chart */}
-                <svg className="w-full h-40 overflow-visible z-10" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {/* Gradient definition */}
+              <div className="w-full relative flex flex-col pt-2">
+                {/* Responsive Aspect-Correct SVG Line Chart */}
+                <svg
+                  className="w-full h-auto overflow-visible select-none"
+                  viewBox="0 0 700 180"
+                  preserveAspectRatio="xMidYMid meet"
+                >
                   <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FA2E72" stopOpacity="0.3" />
+                    <linearGradient id="rankingChartGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#FA2E72" stopOpacity="0.25" />
                       <stop offset="100%" stopColor="#FA2E72" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
 
-                  {/* Area fill */}
-                  <polygon
-                    points={`
-                      0,100 
-                      ${recentHistory
-                        .map((pt, idx) => {
-                          const x = (idx / (recentHistory.length - 1)) * 100;
-                          const y = ((pt.ranking - minRankInHist) / rankSpan) * 80 + 10;
-                          return `${x},${y}`;
-                        })
-                        .join(' ')} 
-                      100,100
-                    `}
-                    fill="url(#chartGradient)"
-                  />
+                  {/* Horizontal Grid Lines */}
+                  <line x1="45" y1="30" x2="665" y2="30" stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
+                  <line x1="45" y1="85" x2="665" y2="85" stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
+                  <line x1="45" y1="140" x2="665" y2="140" stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
 
-                  {/* Line */}
-                  <polyline
-                    fill="none"
-                    stroke="#FA2E72"
-                    strokeWidth="2.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    points={recentHistory
-                      .map((pt, idx) => {
-                        const x = (idx / (recentHistory.length - 1)) * 100;
-                        const y = ((pt.ranking - minRankInHist) / rankSpan) * 80 + 10;
-                        return `${x},${y}`;
-                      })
-                      .join(' ')}
-                  />
+                  {/* Y-Axis Rank Labels */}
+                  <text x="38" y="34" textAnchor="end" className="text-[10px] font-extrabold fill-slate-400">
+                    #{minRankInHist}
+                  </text>
+                  <text x="38" y="89" textAnchor="end" className="text-[10px] font-bold fill-slate-300">
+                    #{Math.round((minRankInHist + maxRankInHist) / 2)}
+                  </text>
+                  <text x="38" y="144" textAnchor="end" className="text-[10px] font-bold fill-slate-400">
+                    #{maxRankInHist}
+                  </text>
 
-                  {/* Points */}
-                  {recentHistory.map((pt, idx) => {
-                    const x = (idx / (recentHistory.length - 1)) * 100;
-                    const y = ((pt.ranking - minRankInHist) / rankSpan) * 80 + 10;
+                  {/* Calculate SVG Points */}
+                  {(() => {
+                    const svgW = 700;
+                    const padL = 45;
+                    const padR = 35;
+                    const padT = 30;
+                    const drawW = svgW - padL - padR;
+                    const drawH = 110;
+
+                    const pts = recentHistory.map((pt, idx) => {
+                      const x = padL + (idx / Math.max(1, recentHistory.length - 1)) * drawW;
+                      const y = padT + ((pt.ranking - minRankInHist) / rankSpan) * drawH;
+                      return { x, y, ranking: pt.ranking, date: pt.date, idx };
+                    });
+
+                    const polylineStr = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+                    const polygonStr = `${pts[0].x.toFixed(1)},140 ${polylineStr} ${pts[pts.length - 1].x.toFixed(1)},140`;
+
                     return (
-                      <circle
-                        key={idx}
-                        cx={x}
-                        cy={y}
-                        r="3"
-                        className="fill-white stroke-[#FA2E72] stroke-2 hover:r-5 transition-all cursor-pointer"
-                      />
-                    );
-                  })}
-                </svg>
+                      <g>
+                        {/* Gradient Area Fill */}
+                        <polygon points={polygonStr} fill="url(#rankingChartGrad)" />
 
-                {/* X-Axis Labels */}
-                <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 mt-2 z-10">
-                  <span>{recentHistory[0]?.date || 'Past'}</span>
-                  <span>{recentHistory[Math.floor(recentHistory.length / 2)]?.date || 'Mid'}</span>
-                  <span>{recentHistory[recentHistory.length - 1]?.date || 'Latest'}</span>
-                </div>
+                        {/* Smooth Main Line */}
+                        <polyline
+                          fill="none"
+                          stroke="#FA2E72"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          points={polylineStr}
+                        />
+
+                        {/* Data Points */}
+                        {pts.map((p) => (
+                          <g key={p.idx} className="group cursor-pointer">
+                            {/* Outer Glow on Hover */}
+                            <circle
+                              cx={p.x}
+                              cy={p.y}
+                              r="8"
+                              className="fill-[#FA2E72]/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                            />
+                            {/* Point Node */}
+                            <circle
+                              cx={p.x}
+                              cy={p.y}
+                              r="4.5"
+                              className="fill-white stroke-[#FA2E72] stroke-2 transition-transform group-hover:r-6"
+                            />
+                            {/* Tooltip on Hover */}
+                            <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                              <rect
+                                x={Math.min(620, Math.max(10, p.x - 45))}
+                                y={Math.max(5, p.y - 32)}
+                                width="90"
+                                height="22"
+                                rx="6"
+                                className="fill-slate-900/90 backdrop-blur-xs"
+                              />
+                              <text
+                                x={Math.min(665, Math.max(55, p.x))}
+                                y={Math.max(19, p.y - 18)}
+                                textAnchor="middle"
+                                className="text-[10px] font-bold fill-white"
+                              >
+                                #{p.ranking} • {p.date}
+                              </text>
+                            </g>
+                          </g>
+                        ))}
+
+                        {/* X-Axis Date Labels */}
+                        <text x={pts[0].x} y="165" textAnchor="start" className="text-[10px] font-bold fill-slate-400">
+                          {pts[0].date}
+                        </text>
+                        {pts.length > 2 && (
+                          <text
+                            x={pts[Math.floor(pts.length / 2)].x}
+                            y="165"
+                            textAnchor="middle"
+                            className="text-[10px] font-bold fill-slate-400"
+                          >
+                            {pts[Math.floor(pts.length / 2)].date}
+                          </text>
+                        )}
+                        <text
+                          x={pts[pts.length - 1].x}
+                          y="165"
+                          textAnchor="end"
+                          className="text-[10px] font-bold fill-slate-400"
+                        >
+                          {pts[pts.length - 1].date}
+                        </text>
+                      </g>
+                    );
+                  })()}
+                </svg>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs font-semibold gap-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
