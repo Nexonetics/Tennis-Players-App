@@ -15,6 +15,11 @@ class BasketballClub {
   final String? description;
   final int? ranking;
   final String category;
+  final int? highestRanking;
+  final DateTime? highestRankingDate;
+
+  int? get careerHighRank => highestRanking;
+  DateTime? get careerHighDate => highestRankingDate;
 
   // Stats & Personnel
   final int titles;
@@ -45,6 +50,8 @@ class BasketballClub {
     this.description,
     this.ranking,
     required this.category,
+    this.highestRanking,
+    this.highestRankingDate,
     this.titles = 0,
     this.playoffAppearances = 0,
     this.marketValue,
@@ -73,6 +80,12 @@ class BasketballClub {
       description: json['description'],
       ranking: json['ranking'],
       category: json['category'] ?? 'men',
+      highestRanking: json['highest_ranking'] ?? json['career_high_rank'],
+      highestRankingDate: json['highest_ranking_date'] != null
+          ? DateTime.parse(json['highest_ranking_date'])
+          : (json['career_high_date'] != null
+              ? DateTime.parse(json['career_high_date'])
+              : null),
       titles: json['titles'] ?? 0,
       playoffAppearances: json['playoff_appearances'] ?? 0,
       marketValue: json['market_value'],

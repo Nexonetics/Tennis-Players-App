@@ -357,6 +357,20 @@ class ApiService {
               ))
           .toList();
     }
+    int? chRank = base.careerHighRank;
+    DateTime? chDate = base.careerHighDate;
+    if (chDate == null && history != null && history.isNotEmpty) {
+      RankingPoint? bestPoint;
+      for (var p in history) {
+        if (bestPoint == null || p.ranking < bestPoint.ranking) {
+          bestPoint = p;
+        }
+      }
+      if (bestPoint != null) {
+        chRank ??= bestPoint.ranking;
+        chDate = bestPoint.date;
+      }
+    }
     return TableTennisPlayer(
       id: base.id,
       name: base.name,
@@ -371,8 +385,8 @@ class ApiService {
       gender: base.gender,
       lastUpdated: base.lastUpdated,
       rankingHistory: history,
-      careerHighRank: base.careerHighRank,
-      careerHighDate: base.careerHighDate,
+      careerHighRank: chRank,
+      careerHighDate: chDate,
     );
   }
 
@@ -771,6 +785,21 @@ class ApiService {
               ))
           .toList();
     }
+    final finalHistory = history ?? base.rankingHistory;
+    int? chRank = base.highestRanking;
+    DateTime? chDate = base.highestRankingDate;
+    if (chDate == null && finalHistory != null && finalHistory.isNotEmpty) {
+      RankingPoint? bestPoint;
+      for (var p in finalHistory) {
+        if (bestPoint == null || p.ranking < bestPoint.ranking) {
+          bestPoint = p;
+        }
+      }
+      if (bestPoint != null) {
+        chRank ??= bestPoint.ranking;
+        chDate = bestPoint.date;
+      }
+    }
     return FootballNationalTeam(
       id: base.id,
       name: base.name,
@@ -785,9 +814,9 @@ class ApiService {
       description: base.description,
       ranking: base.ranking,
       category: base.category,
-      rankingHistory: history ?? base.rankingHistory,
-      highestRanking: base.highestRanking,
-      highestRankingDate: base.highestRankingDate,
+      rankingHistory: finalHistory,
+      highestRanking: chRank,
+      highestRankingDate: chDate,
       totalTrophies: base.totalTrophies,
       worldCupTitles: base.worldCupTitles,
       captain: base.captain,
@@ -1126,6 +1155,21 @@ class ApiService {
               ))
           .toList();
     }
+    final finalHistory = history ?? base.rankingHistory;
+    int? chRank = base.highestRanking;
+    DateTime? chDate = base.highestRankingDate;
+    if (chDate == null && finalHistory != null && finalHistory.isNotEmpty) {
+      RankingPoint? bestPoint;
+      for (var p in finalHistory) {
+        if (bestPoint == null || p.ranking < bestPoint.ranking) {
+          bestPoint = p;
+        }
+      }
+      if (bestPoint != null) {
+        chRank ??= bestPoint.ranking;
+        chDate = bestPoint.date;
+      }
+    }
     return BasketballNationalTeam(
       id: base.id,
       name: base.name,
@@ -1140,9 +1184,9 @@ class ApiService {
       description: base.description,
       ranking: base.ranking,
       category: base.category,
-      rankingHistory: history ?? base.rankingHistory,
-      highestRanking: base.highestRanking,
-      highestRankingDate: base.highestRankingDate,
+      rankingHistory: finalHistory,
+      highestRanking: chRank,
+      highestRankingDate: chDate,
       totalTrophies: base.totalTrophies,
       worldCupTitles: base.worldCupTitles,
       captain: base.captain,

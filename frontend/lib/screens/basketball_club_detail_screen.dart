@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/basketball_club.dart';
 
 class BasketballClubDetailScreen extends StatelessWidget {
@@ -21,6 +22,13 @@ class BasketballClubDetailScreen extends StatelessWidget {
   }
 
   Widget _buildMobileLayout(BuildContext context) {
+    final peakDateStr = club.highestRankingDate != null
+        ? DateFormat('MMM yyyy').format(club.highestRankingDate!)
+        : null;
+    final bestRankStr = club.highestRanking != null
+        ? '#${club.highestRanking}${peakDateStr != null ? '\n($peakDateStr)' : ''}'
+        : 'N/A';
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -37,13 +45,11 @@ class BasketballClubDetailScreen extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _buildStatItem(
-                      'Titles', '${club.titles}', Icons.emoji_events),
-                  _buildStatItem('Playoffs', '${club.playoffAppearances}',
-                      Icons.trending_up),
-                  _buildStatItem('Rank', '#${club.ranking}', Icons.bar_chart),
+                  _buildStatItem('Rank', '#${club.ranking ?? "N/A"}', Icons.bar_chart),
+                  _buildStatItem('Best Rank', bestRankStr, Icons.trending_up),
+                  _buildStatItem('Titles', '${club.titles}', Icons.emoji_events),
                 ],
               ),
             ),
@@ -96,6 +102,13 @@ class BasketballClubDetailScreen extends StatelessWidget {
   }
 
   Widget _buildWebProfileCard() {
+    final peakDateStr = club.highestRankingDate != null
+        ? DateFormat('MMM yyyy').format(club.highestRankingDate!)
+        : null;
+    final bestRankStr = club.highestRanking != null
+        ? '#${club.highestRanking}${peakDateStr != null ? '\n($peakDateStr)' : ''}'
+        : 'N/A';
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
@@ -139,9 +152,9 @@ class BasketballClubDetailScreen extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatItem(
-                        'Titles', '${club.titles}', Icons.emoji_events),
-                    _buildStatItem('Rank', '#${club.ranking}', Icons.bar_chart),
+                    _buildStatItem('Rank', '#${club.ranking ?? "N/A"}', Icons.bar_chart),
+                    _buildStatItem('Best Rank', bestRankStr, Icons.trending_up),
+                    _buildStatItem('Titles', '${club.titles}', Icons.emoji_events),
                   ],
                 ),
               ],

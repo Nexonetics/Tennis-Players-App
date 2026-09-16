@@ -36,6 +36,8 @@ class TableTennisPlayer {
   });
 
   int? get birthYear => birthDate?.year;
+  int? get highestRanking => careerHighRank;
+  DateTime? get highestRankingDate => careerHighDate;
 
   int? get age {
     if (birthDate == null) return null;
@@ -76,10 +78,12 @@ class TableTennisPlayer {
                   ))
               .toList()
           : null,
-      careerHighRank: json['career_high_rank'],
+      careerHighRank: json['career_high_rank'] ?? json['highest_ranking'],
       careerHighDate: json['career_high_date'] != null
           ? DateTime.parse(json['career_high_date'])
-          : null,
+          : (json['highest_ranking_date'] != null
+              ? DateTime.parse(json['highest_ranking_date'])
+              : null),
     );
   }
 }

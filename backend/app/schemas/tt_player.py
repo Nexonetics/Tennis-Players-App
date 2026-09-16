@@ -7,6 +7,8 @@ class TtPlayerBase(BaseModel):
     name: str
     country: Optional[str] = None
     ranking: Optional[int] = None
+    highest_ranking: Optional[int] = None
+    highest_ranking_date: Optional[date] = None
     birth_date: Optional[date] = None
     weight: Optional[str] = None
     playing_style: Optional[str] = None

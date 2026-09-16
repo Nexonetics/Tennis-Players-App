@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/basketball_club.dart';
 import '../services/api_service.dart';
@@ -681,6 +682,20 @@ class _BasketballClubCompareScreenState
   }
 
   Widget _buildStatsComparison() {
+    final peakDateA = _clubA!.highestRankingDate != null
+        ? DateFormat('MMM yyyy').format(_clubA!.highestRankingDate!)
+        : '';
+    final bestRankA = _clubA!.highestRanking != null
+        ? '#${_clubA!.highestRanking}${peakDateA.isNotEmpty ? " ($peakDateA)" : ""}'
+        : '#${_clubA!.ranking ?? "N/A"}';
+
+    final peakDateB = _clubB!.highestRankingDate != null
+        ? DateFormat('MMM yyyy').format(_clubB!.highestRankingDate!)
+        : '';
+    final bestRankB = _clubB!.highestRanking != null
+        ? '#${_clubB!.highestRanking}${peakDateB.isNotEmpty ? " ($peakDateB)" : ""}'
+        : '#${_clubB!.ranking ?? "N/A"}';
+
     return GlassContainer(
       borderRadius: 20,
       opacity: 0.1,
@@ -696,6 +711,8 @@ class _BasketballClubCompareScreenState
           const SizedBox(height: 20),
           _buildStatRow(
               'World Rank', '#${_clubA!.ranking}', '#${_clubB!.ranking}',
+              isLowerBetter: true),
+          _buildStatRow('Best Rank', bestRankA, bestRankB,
               isLowerBetter: true),
           _buildStatRow('Titles', '${_clubA!.titles}', '${_clubB!.titles}'),
           _buildStatRow('Playoff App', '${_clubA!.playoffAppearances}',

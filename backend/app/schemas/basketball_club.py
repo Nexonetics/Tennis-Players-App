@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import date, datetime
 from typing import Optional, List, Dict
 
 class BasketballClubBase(BaseModel):
@@ -17,6 +17,10 @@ class BasketballClubBase(BaseModel):
     website: Optional[str] = None
     description: Optional[str] = None
     ranking: Optional[int] = None
+    highest_ranking: Optional[int] = None
+    highest_ranking_date: Optional[str] = None
+    career_high_rank: Optional[int] = None
+    career_high_date: Optional[str] = None
     category: Optional[str] = "men"
     titles: Optional[int] = 0
     playoff_appearances: Optional[int] = 0
