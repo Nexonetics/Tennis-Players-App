@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, User, Trophy, Medal, Star, TrendingUp, ArrowLeftRight, Loader2 } from 'lucide-react';
+import { Calendar, User, Trophy, Medal, Star, TrendingUp, ArrowLeftRight, Loader2, Building2, Shield, Award } from 'lucide-react';
 import { UnifiedAthlete, HistoryPoint } from '@/types';
 import { getAthleteById, getAthleteHistory } from '@/lib/localDataService';
 
@@ -76,7 +76,7 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-28 gap-4">
         <Loader2 className="w-12 h-12 text-[#FA2E72] animate-spin" />
-        <span className="text-sm font-semibold text-slate-500">Loading player profile...</span>
+        <span className="text-sm font-semibold text-slate-500">Loading profile...</span>
       </div>
     );
   }
@@ -84,14 +84,17 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
   if (!athlete) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4 max-w-xl mx-auto text-center">
-        <h2 className="text-2xl font-bold text-slate-800">Athlete Not Found</h2>
-        <p className="text-slate-500 text-sm">We couldn't find an athlete matching this ID in the local dataset.</p>
+        <h2 className="text-2xl font-bold text-slate-800">Profile Not Found</h2>
+        <p className="text-slate-500 text-sm">We couldn't find a profile matching this ID in the local dataset.</p>
         <Link href="/rankings" className="mt-4 px-6 py-2.5 bg-[#FA2E72] text-white rounded-full text-sm font-bold shadow-sm">
           Return to Rankings
         </Link>
       </div>
     );
   }
+
+  const isTeam = athlete.sport === 'Football' || athlete.sport === 'Basketball';
+  const extra = (athlete.extraInfo || {}) as Record<string, any>;
 
   // Format ranking history for SVG chart
   const recentHistory = history.length > 0 ? history.slice(-12) : [];
@@ -125,7 +128,7 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
             <div className="flex items-center justify-center md:justify-start gap-2 text-xs font-bold uppercase tracking-wider bg-white/20 backdrop-blur-md px-3 py-1 rounded-full w-fit mx-auto md:mx-0">
               <span>{athlete.sport}</span>
               <span>•</span>
-              <span>{athlete.gender}</span>
+              <span>{isTeam ? 'Team' : athlete.gender}</span>
               <span>•</span>
               <span>{athlete.country} ({athlete.countryCode})</span>
             </div>
@@ -135,16 +138,34 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
             </h1>
 
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm font-semibold opacity-90 mt-1">
-              {athlete.age && (
+              {!isTeam && athlete.age && (
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
                   <span>{athlete.age} Years Old</span>
                 </div>
               )}
-              {athlete.playingStyle && (
+              {!isTeam && athlete.playingStyle && (
                 <div className="flex items-center gap-1.5">
                   <User className="w-4 h-4" />
                   <span>{athlete.playingStyle}</span>
+                </div>
+              )}
+              {isTeam && extra.founded_year && (
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4" />
+                  <span>Est. {extra.founded_year}</span>
+                </div>
+              )}
+              {isTeam && (extra.arena || extra.stadium) && (
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="w-4 h-4" />
+                  <span>{extra.arena || extra.stadium}</span>
+                </div>
+              )}
+              {isTeam && (extra.league || extra.confederation) && (
+                <div className="flex items-center gap-1.5">
+                  <Shield className="w-4 h-4" />
+                  <span>{extra.league || extra.confederation}</span>
                 </div>
               )}
             </div>
@@ -350,7 +371,7 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs font-semibold gap-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                 <TrendingUp className="w-8 h-8 opacity-40" />
-                <span>Detailed ranking history unavailable for this athlete</span>
+                <span>Detailed ranking history unavailable for this profile</span>
               </div>
             )}
           </div>
@@ -359,64 +380,155 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
         {/* Right Column: Profile Overview & Bio (5 Cols) */}
         <div className="xl:col-span-5 flex flex-col gap-6">
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col gap-5">
-            <h3 className="text-lg font-bold text-slate-800">Athlete Profile</h3>
+            <h3 className="text-lg font-bold text-slate-800">{isTeam ? 'Team Profile' : 'Athlete Profile'}</h3>
 
             <div className="flex flex-col gap-4">
+              {/* Name Card */}
               <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs">
                     <User className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-400">Full Name</div>
+                    <div className="text-xs font-semibold text-slate-400">{isTeam ? 'Team Name' : 'Full Name'}</div>
                     <div className="font-bold text-slate-800">{athlete.name}</div>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs">
-                    <Calendar className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-400">Date of Birth</div>
-                    <div className="font-bold text-slate-800">{athlete.birthDate || 'N/A'}</div>
-                  </div>
-                </div>
-                {athlete.age && (
-                  <span className="text-xs font-bold text-slate-500 bg-white px-3 py-1 rounded-full shadow-2xs">
-                    {athlete.age} Yrs
-                  </span>
-                )}
-              </div>
-
-              <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
-                <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
-                  <User className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-400">Playing Style</div>
-                  <div className="font-bold text-slate-800 text-lg">{athlete.playingStyle || 'Standard'}</div>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
-                    <Star className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold text-slate-400">Win Rate</div>
-                    <div className="font-bold text-slate-800 text-lg">
-                      {athlete.winRate !== undefined ? `${athlete.winRate}%` : '75.0%'}
+              {!isTeam ? (
+                <>
+                  {athlete.birthDate && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs">
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-400">Date of Birth</div>
+                          <div className="font-bold text-slate-800">{athlete.birthDate}</div>
+                        </div>
+                      </div>
+                      {athlete.age && (
+                        <span className="text-xs font-bold text-slate-500 bg-white px-3 py-1 rounded-full shadow-2xs">
+                          {athlete.age} Yrs
+                        </span>
+                      )}
                     </div>
-                  </div>
-                </div>
-                <div className="w-10 h-10 rounded-full border-4 border-[#FA2E72] border-r-pink-100 flex items-center justify-center text-[10px] font-bold text-[#FA2E72]">
-                  {athlete.winRate !== undefined ? `${Math.round(athlete.winRate)}%` : '75%'}
-                </div>
-              </div>
+                  )}
+
+                  {athlete.playingStyle && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
+                      <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-400">Playing Style</div>
+                        <div className="font-bold text-slate-800 text-lg">{athlete.playingStyle}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {athlete.winRate !== undefined && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                          <Star className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-400">Win Rate</div>
+                          <div className="font-bold text-slate-800 text-lg">{athlete.winRate}%</div>
+                        </div>
+                      </div>
+                      <div className="w-10 h-10 rounded-full border-4 border-[#FA2E72] border-r-pink-100 flex items-center justify-center text-[10px] font-bold text-[#FA2E72]">
+                        {Math.round(athlete.winRate)}%
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {extra.founded_year && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs">
+                          <Calendar className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-400">Founded Year</div>
+                          <div className="font-bold text-slate-800">{extra.founded_year}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(extra.arena || extra.stadium) && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-400">Home Arena / Stadium</div>
+                        <div className="font-bold text-slate-800">{extra.arena || extra.stadium}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(extra.head_coach || extra.manager) && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                        <User className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-400">Head Coach / Manager</div>
+                        <div className="font-bold text-slate-800">{extra.head_coach || extra.manager}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(extra.league || extra.confederation) && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-4 border border-slate-100">
+                      <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                        <Shield className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-400">League / Confederation</div>
+                        <div className="font-bold text-slate-800">{extra.league || extra.confederation}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {(extra.titles !== undefined || extra.total_trophies !== undefined || extra.world_cup_titles !== undefined) && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                          <Award className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-400">Championship Titles / Trophies</div>
+                          <div className="font-bold text-slate-800 text-lg">
+                            {extra.titles ?? extra.total_trophies ?? extra.world_cup_titles}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {athlete.winRate !== undefined && (
+                    <div className="bg-slate-50 rounded-2xl p-4 flex items-center justify-between border border-slate-100">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#FA2E72] shadow-xs shrink-0">
+                          <Star className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-semibold text-slate-400">Win Percentage</div>
+                          <div className="font-bold text-slate-800 text-lg">{athlete.winRate}%</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
         </div>
