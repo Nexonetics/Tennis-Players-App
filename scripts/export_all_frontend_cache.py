@@ -227,13 +227,17 @@ def export_all():
 
                 ch = career_high_tt_map.get(hp.id, {})
                 career_high_rank = ch.get("rank") or cur_rank
+                career_high_date = ch.get("date")
 
                 item = {
                     "id": hp.id,
                     "name": full_name,
                     "country": hp.country,
                     "ranking": cur_rank,
+                    "highest_ranking": career_high_rank,
+                    "highest_ranking_date": career_high_date,
                     "career_high_rank": career_high_rank,
+                    "career_high_date": career_high_date,
                     "birth_date": b_date,
                     "weight": old_p.weight if old_p else None,
                     "playing_style": old_p.playing_style if old_p else "Unknown",
@@ -257,9 +261,27 @@ def export_all():
         # 4. FOOTBALL NATIONAL TEAMS & HISTORIES
         # -------------------------------------------------------------
         print("\n4. Exporting Football National Teams & Histories...")
+        fb_histories = {}
+        fb_career_high_map = {}
+        all_fb_hist = db.query(FootballHistoricalRanking).order_by(
+            FootballHistoricalRanking.ranking_year.asc(),
+            FootballHistoricalRanking.ranking_month.asc(),
+            FootballHistoricalRanking.ranking_date.asc()
+        ).all()
+        for r in all_fb_hist:
+            tid = str(r.team_id)
+            dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
+            fb_histories.setdefault(tid, []).append({"rank": r.rank, "points": r.points, "date": dt_str})
+            if r.rank > 0:
+                if r.team_id not in fb_career_high_map or r.rank < fb_career_high_map[r.team_id]["rank"]:
+                    fb_career_high_map[r.team_id] = {"rank": r.rank, "date": dt_str}
+
         fb_teams = db.query(FootballNationalTeam).order_by(FootballNationalTeam.category.asc(), FootballNationalTeam.ranking.asc()).all()
         fb_export = []
         for t in fb_teams:
+            ch = fb_career_high_map.get(t.id, {})
+            ch_rank = ch.get("rank") or t.ranking
+            ch_date = ch.get("date")
             fb_export.append({
                 "id": t.id,
                 "name": t.name,
@@ -273,6 +295,10 @@ def export_all():
                 "website": t.website,
                 "description": t.description,
                 "ranking": t.ranking,
+                "highest_ranking": ch_rank,
+                "highest_ranking_date": ch_date,
+                "career_high_rank": ch_rank,
+                "career_high_date": ch_date,
                 "category": t.category,
                 "total_trophies": t.total_trophies or 0,
                 "world_cup_titles": t.world_cup_titles or 0,
@@ -286,12 +312,6 @@ def export_all():
             json.dump(fb_export, f, ensure_ascii=False, indent=2)
         print(f"   Saved {os.path.join(OUT_DIR, 'football_national_teams.json')} ({len(fb_export)} Football teams)")
 
-        fb_histories = {}
-        all_fb_hist = db.query(FootballHistoricalRanking).all()
-        for r in all_fb_hist:
-            tid = str(r.team_id)
-            dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
-            fb_histories.setdefault(tid, []).append({"rank": r.rank, "points": r.points, "date": dt_str})
         with open(os.path.join(OUT_DIR, 'football_team_histories.json'), 'w', encoding='utf-8') as f:
             json.dump(fb_histories, f, ensure_ascii=False, indent=2)
         print(f"   Saved {os.path.join(OUT_DIR, 'football_team_histories.json')} ({len(fb_histories)} Football team histories)")
@@ -300,9 +320,27 @@ def export_all():
         # 5. BASKETBALL NATIONAL TEAMS & HISTORIES
         # -------------------------------------------------------------
         print("\n5. Exporting Basketball National Teams & Histories...")
+        bb_histories = {}
+        bb_career_high_map = {}
+        all_bb_hist = db.query(BasketballHistoricalRanking).order_by(
+            BasketballHistoricalRanking.ranking_year.asc(),
+            BasketballHistoricalRanking.ranking_month.asc(),
+            BasketballHistoricalRanking.ranking_date.asc()
+        ).all()
+        for r in all_bb_hist:
+            tid = str(r.team_id)
+            dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
+            bb_histories.setdefault(tid, []).append({"rank": r.rank, "points": r.points, "date": dt_str})
+            if r.rank > 0:
+                if r.team_id not in bb_career_high_map or r.rank < bb_career_high_map[r.team_id]["rank"]:
+                    bb_career_high_map[r.team_id] = {"rank": r.rank, "date": dt_str}
+
         bb_teams = db.query(BasketballNationalTeam).order_by(BasketballNationalTeam.category.asc(), BasketballNationalTeam.ranking.asc()).all()
         bb_export = []
         for t in bb_teams:
+            ch = bb_career_high_map.get(t.id, {})
+            ch_rank = ch.get("rank") or t.ranking
+            ch_date = ch.get("date")
             bb_export.append({
                 "id": t.id,
                 "name": t.name,
@@ -316,6 +354,10 @@ def export_all():
                 "website": t.website,
                 "description": t.description,
                 "ranking": t.ranking,
+                "highest_ranking": ch_rank,
+                "highest_ranking_date": ch_date,
+                "career_high_rank": ch_rank,
+                "career_high_date": ch_date,
                 "category": t.category,
                 "total_trophies": t.total_trophies or 0,
                 "world_cup_titles": t.world_cup_titles or 0,
@@ -329,12 +371,6 @@ def export_all():
             json.dump(bb_export, f, ensure_ascii=False, indent=2)
         print(f"   Saved {os.path.join(OUT_DIR, 'basketball_national_teams.json')} ({len(bb_export)} Basketball teams)")
 
-        bb_histories = {}
-        all_bb_hist = db.query(BasketballHistoricalRanking).all()
-        for r in all_bb_hist:
-            tid = str(r.team_id)
-            dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
-            bb_histories.setdefault(tid, []).append({"rank": r.rank, "points": r.points, "date": dt_str})
         with open(os.path.join(OUT_DIR, 'basketball_team_histories.json'), 'w', encoding='utf-8') as f:
             json.dump(bb_histories, f, ensure_ascii=False, indent=2)
         print(f"   Saved {os.path.join(OUT_DIR, 'basketball_team_histories.json')} ({len(bb_histories)} Basketball team histories)")
@@ -346,6 +382,10 @@ def export_all():
         bb_clubs = db.query(BasketballClub).all()
         bc_export = []
         for c in bb_clubs:
+            ch_rank = getattr(c, 'highest_ranking', None) or getattr(c, 'career_high_rank', None) or c.ranking
+            ch_date = getattr(c, 'highest_ranking_date', None) or getattr(c, 'career_high_date', None)
+            if hasattr(ch_date, 'isoformat'):
+                ch_date = ch_date.isoformat()
             bc_export.append({
                 "id": c.id,
                 "name": c.name,
@@ -362,6 +402,10 @@ def export_all():
                 "website": c.website,
                 "description": c.description,
                 "ranking": c.ranking,
+                "highest_ranking": ch_rank,
+                "highest_ranking_date": ch_date,
+                "career_high_rank": ch_rank,
+                "career_high_date": ch_date,
                 "category": c.category,
                 "titles": c.titles or 0,
                 "playoff_appearances": c.playoff_appearances or 0,

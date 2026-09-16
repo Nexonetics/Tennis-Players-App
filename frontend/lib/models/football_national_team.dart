@@ -51,6 +51,9 @@ class FootballNationalTeam {
     this.honors,
   });
 
+  int? get careerHighRank => highestRanking;
+  DateTime? get careerHighDate => highestRankingDate;
+
   factory FootballNationalTeam.fromJson(Map<String, dynamic> json) {
     return FootballNationalTeam(
       id: json['id'],
