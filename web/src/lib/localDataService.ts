@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import {
   TennisPlayer,
   TableTennisPlayer,
@@ -12,21 +10,43 @@ import {
 // In-memory cache for parsed JSON data
 const dataCache: Record<string, any> = {};
 
-function getJsonData<T>(filename: string): T {
+async function getJsonData<T>(filename: string): Promise<T> {
   if (dataCache[filename]) {
     return dataCache[filename] as T;
   }
-  const filePath = path.join(process.cwd(), 'src/data/json', filename);
-  try {
-    if (fs.existsSync(filePath)) {
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(fileContent);
-      dataCache[filename] = parsed;
-      return parsed as T;
+
+  if (typeof window === 'undefined') {
+    try {
+      // Server/SSG node environment
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('fs');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path');
+      const filePath = path.join(process.cwd(), 'public/data/json', filename);
+      if (fs.existsSync(filePath)) {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const parsed = JSON.parse(fileContent);
+        dataCache[filename] = parsed;
+        return parsed as T;
+      }
+    } catch (err) {
+      console.error(`Error reading ${filename} from disk:`, err);
     }
-  } catch (error) {
-    console.error(`Error loading data file ${filename}:`, error);
+  } else {
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+    const url = `${basePath}/data/json/${filename}`;
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const parsed = await res.json();
+        dataCache[filename] = parsed;
+        return parsed as T;
+      }
+    } catch (err) {
+      console.error(`Error fetching ${filename}:`, err);
+    }
   }
+
   return [] as unknown as T;
 }
 
@@ -157,20 +177,20 @@ export function toUnifiedAthlete(
   };
 }
 
-export function getAthletesBySport(
+export async function getAthletesBySport(
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball',
   genderFilter?: string
-): UnifiedAthlete[] {
+): Promise<UnifiedAthlete[]> {
   let rawList: any[] = [];
   if (sport === 'Tennis') {
-    rawList = getJsonData<TennisPlayer[]>('players.json');
+    rawList = await getJsonData<TennisPlayer[]>('players.json');
   } else if (sport === 'Table Tennis') {
-    rawList = getJsonData<TableTennisPlayer[]>('tt_players.json');
+    rawList = await getJsonData<TableTennisPlayer[]>('tt_players.json');
   } else if (sport === 'Football') {
-    rawList = getJsonData<FootballTeam[]>('football_national_teams.json');
+    rawList = await getJsonData<FootballTeam[]>('football_national_teams.json');
   } else if (sport === 'Basketball') {
-    const clubs = getJsonData<BasketballClub[]>('basketball_clubs.json');
-    const nats = getJsonData<any[]>('basketball_national_teams.json');
+    const clubs = await getJsonData<BasketballClub[]>('basketball_clubs.json');
+    const nats = await getJsonData<any[]>('basketball_national_teams.json');
     rawList = [...clubs, ...nats];
   }
 
@@ -190,7 +210,7 @@ export function getAthletesBySport(
   return athletes;
 }
 
-export function searchAthletes({
+export async function searchAthletes({
   sport = 'Tennis',
   gender,
   query,
@@ -211,7 +231,7 @@ export function searchAthletes({
   page?: number;
   pageSize?: number;
 }) {
-  let list = getAthletesBySport(sport, gender);
+  let list = await getAthletesBySport(sport, gender);
 
   if (query && query.trim() !== '') {
     const q = query.toLowerCase().trim();
@@ -259,33 +279,33 @@ export function searchAthletes({
   };
 }
 
-export function getAthleteById(
+export async function getAthleteById(
   id: string,
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'
-): UnifiedAthlete | null {
-  const list = getAthletesBySport(sport);
+): Promise<UnifiedAthlete | null> {
+  const list = await getAthletesBySport(sport);
   const athlete = list.find((a) => String(a.id) === String(id));
   if (athlete) return athlete;
 
   // Search across other sports if not found in requested sport
   for (const s of ['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const) {
     if (s === sport) continue;
-    const found = getAthletesBySport(s).find((a) => String(a.id) === String(id));
+    const found = (await getAthletesBySport(s)).find((a) => String(a.id) === String(id));
     if (found) return found;
   }
   return null;
 }
 
-export function getAthleteHistory(
+export async function getAthleteHistory(
   id: string,
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'
-): HistoryPoint[] {
+): Promise<HistoryPoint[]> {
   let filename = 'player_histories.json';
   if (sport === 'Table Tennis') filename = 'tt_player_histories.json';
   else if (sport === 'Football') filename = 'football_team_histories.json';
   else if (sport === 'Basketball') filename = 'basketball_team_histories.json';
 
-  const historyDict = getJsonData<Record<string, HistoryPoint[]>>(filename);
+  const historyDict = await getJsonData<Record<string, HistoryPoint[]>>(filename);
   if (historyDict && historyDict[String(id)]) {
     return historyDict[String(id)];
   }
@@ -297,7 +317,7 @@ export function getAthleteHistory(
     'football_team_histories.json',
     'basketball_team_histories.json',
   ]) {
-    const dict = getJsonData<Record<string, HistoryPoint[]>>(f);
+    const dict = await getJsonData<Record<string, HistoryPoint[]>>(f);
     if (dict && dict[String(id)]) {
       return dict[String(id)];
     }
@@ -306,10 +326,10 @@ export function getAthleteHistory(
   return [];
 }
 
-export function getUniqueCountries(
+export async function getUniqueCountries(
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'
-): string[] {
-  const athletes = getAthletesBySport(sport);
+): Promise<string[]> {
+  const athletes = await getAthletesBySport(sport);
   const countrySet = new Set<string>();
   athletes.forEach((a) => {
     if (a.country && a.country !== 'Unknown') countrySet.add(a.country);

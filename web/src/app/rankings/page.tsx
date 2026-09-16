@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { UnifiedAthlete } from '@/types';
+import { searchAthletes } from '@/lib/localDataService';
 
 // Safe Athlete Image component with onError fallback
 const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
@@ -49,14 +50,15 @@ export default function RankingsPage() {
     setLoading(true);
     try {
       const genderParam = activeCategory === 'Women' ? 'Women' : 'Men';
-      const res = await fetch(
-        `/api/players?sport=${encodeURIComponent(activeSport)}&gender=${genderParam}&page=${page}&pageSize=20&sortBy=rank`
-      );
-      if (res.ok) {
-        const data = await res.json();
-        setPlayers(data.items || []);
-        setTotalPages(data.totalPages || 1);
-      }
+      const data = await searchAthletes({
+        sport: activeSport,
+        gender: genderParam,
+        page,
+        pageSize: 20,
+        sortBy: 'rank',
+      });
+      setPlayers(data.items || []);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error('Failed to fetch rankings', err);
     } finally {

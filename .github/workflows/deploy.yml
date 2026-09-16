@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy Next.js Web to GitHub Pages
 
 on:
   push:
@@ -17,40 +17,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          channel: 'stable'
-          
-      - name: Get Dependencies
-        run: |
-          cd frontend
-          flutter pub get
-          
-      - name: Calculate Base Href & Target Dir
+          node-version: '20'
+
+      - name: Calculate Base Path & Target Dir
         id: config
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "base_href=/${{ github.event.repository.name }}/" >> $GITHUB_OUTPUT
+            echo "base_path=/${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
             echo "dest_dir=" >> $GITHUB_OUTPUT
           else
             # Clean branch name for URL safety (replace slash with hyphen)
             CLEAN_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
-            echo "base_href=/${{ github.event.repository.name }}/previews/${CLEAN_NAME}/" >> $GITHUB_OUTPUT
+            echo "base_path=/${{ github.event.repository.name }}/previews/${CLEAN_NAME}" >> $GITHUB_OUTPUT
             echo "dest_dir=previews/${CLEAN_NAME}" >> $GITHUB_OUTPUT
           fi
-          
-      - name: Build Web
+
+      - name: Install Dependencies
         run: |
-          cd frontend
-          flutter build web --release --base-href "${{ steps.config.outputs.base_href }}"
-          
+          cd web
+          npm ci
+
+      - name: Build Next.js Static Web
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.config.outputs.base_path }}
+        run: |
+          cd web
+          npm run build
+
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./frontend/build/web
+          publish_dir: ./web/out
           destination_dir: ${{ steps.config.outputs.dest_dir }}
           keep_files: true
 

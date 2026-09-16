@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Search as SearchIcon, MapPin, BarChart3, Loader2 } from 'lucide-react';
 import { UnifiedAthlete } from '@/types';
+import { getUniqueCountries, searchAthletes } from '@/lib/localDataService';
 
 // Safe Athlete Image component with onError fallback
 const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
@@ -56,11 +57,8 @@ export default function SearchPage() {
   useEffect(() => {
     async function fetchCountries() {
       try {
-        const res = await fetch(`/api/countries?sport=${encodeURIComponent(sport)}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCountries(data.countries || []);
-        }
+        const countryList = await getUniqueCountries(sport);
+        setCountries(countryList || []);
       } catch (err) {
         console.error('Failed to load countries', err);
       }
@@ -87,26 +85,23 @@ export default function SearchPage() {
         minRank = 101;
       }
 
-      const params = new URLSearchParams({
+      const country = selectedCountry === 'All' || selectedCountry === 'Country' ? '' : selectedCountry;
+
+      const data = await searchAthletes({
         sport,
         gender,
         query: searchQuery,
-        country: selectedCountry === 'All' || selectedCountry === 'Country' ? '' : selectedCountry,
-        sortBy,
-        page: String(page),
-        pageSize: '20',
+        country,
+        minRank,
+        maxRank,
+        sortBy: sortBy as 'rank' | 'points' | 'name',
+        page,
+        pageSize: 20,
       });
 
-      if (minRank !== undefined) params.append('minRank', String(minRank));
-      if (maxRank !== undefined) params.append('maxRank', String(maxRank));
-
-      const res = await fetch(`/api/players?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setPlayers(data.items || []);
-        setTotalCount(data.total || 0);
-        setTotalPages(data.totalPages || 1);
-      }
+      setPlayers(data.items || []);
+      setTotalCount(data.total || 0);
+      setTotalPages(data.totalPages || 1);
     } catch (err) {
       console.error('Failed to search players', err);
     } finally {

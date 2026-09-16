@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeftRight, X, Search, Loader2 } from 'lucide-react';
 import { UnifiedAthlete, HistoryPoint } from '@/types';
+import { searchAthletes, getAthleteById, getAthleteHistory } from '@/lib/localDataService';
 
 // Safe Athlete Image component with onError fallback
 const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
@@ -59,25 +60,19 @@ function ComparePageContent() {
   useEffect(() => {
     async function loadDefaults() {
       try {
-        const res = await fetch(`/api/players?sport=${encodeURIComponent(sport)}&pageSize=5`);
-        if (res.ok) {
-          const data = await res.json();
-          const items: UnifiedAthlete[] = data.items || [];
-          if (items.length >= 2) {
-            let pA = items[0];
-            let pB = items[1];
+        const data = await searchAthletes({ sport, pageSize: 5 });
+        const items: UnifiedAthlete[] = data.items || [];
+        if (items.length >= 2) {
+          let pA = items[0];
+          let pB = items[1];
 
-            if (initialPlayer1) {
-              const resA = await fetch(`/api/players/${initialPlayer1}?sport=${encodeURIComponent(sport)}`);
-              if (resA.ok) {
-                const dataA = await resA.json();
-                if (dataA.athlete) pA = dataA.athlete;
-              }
-            }
-
-            setPlayerA(pA);
-            setPlayerB(pB);
+          if (initialPlayer1) {
+            const foundA = await getAthleteById(initialPlayer1, sport);
+            if (foundA) pA = foundA;
           }
+
+          setPlayerA(pA);
+          setPlayerB(pB);
         }
       } catch (err) {
         console.error('Failed loading default players for compare', err);
@@ -91,22 +86,16 @@ function ComparePageContent() {
     async function fetchHistories() {
       if (playerA) {
         try {
-          const res = await fetch(`/api/players/${playerA.id}?sport=${encodeURIComponent(sport)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setHistoryA(data.history || []);
-          }
+          const hA = await getAthleteHistory(playerA.id, playerA.sport);
+          setHistoryA(hA || []);
         } catch (e) {
           console.error(e);
         }
       }
       if (playerB) {
         try {
-          const res = await fetch(`/api/players/${playerB.id}?sport=${encodeURIComponent(sport)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setHistoryB(data.history || []);
-          }
+          const hB = await getAthleteHistory(playerB.id, playerB.sport);
+          setHistoryB(hB || []);
         } catch (e) {
           console.error(e);
         }
@@ -120,11 +109,8 @@ function ComparePageContent() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await fetch(`/api/players?sport=${encodeURIComponent(sport)}&query=${encodeURIComponent(searchQuery)}&pageSize=10`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data.items || []);
-      }
+      const data = await searchAthletes({ sport, query: searchQuery, pageSize: 10 });
+      setSearchResults(data.items || []);
     } catch (e) {
       console.error(e);
     } finally {
