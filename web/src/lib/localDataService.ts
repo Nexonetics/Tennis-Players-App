@@ -191,7 +191,10 @@ export async function getAthletesBySport(
   } else if (sport === 'Basketball') {
     const clubs = await getJsonData<BasketballClub[]>('basketball_clubs.json');
     const nats = await getJsonData<any[]>('basketball_national_teams.json');
-    rawList = [...clubs, ...nats];
+    rawList = [
+      ...clubs.map((c) => ({ ...c, id: `b_club_${c.id}` })),
+      ...nats.map((n) => ({ ...n, id: `b_nat_${n.id}` })),
+    ];
   }
 
   let athletes = rawList.map((item) => toUnifiedAthlete(item, sport));
@@ -283,14 +286,17 @@ export async function getAthleteById(
   id: string,
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'
 ): Promise<UnifiedAthlete | null> {
+  const targetId = String(id);
   const list = await getAthletesBySport(sport);
-  const athlete = list.find((a) => String(a.id) === String(id));
+  const athlete = list.find((a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId);
   if (athlete) return athlete;
 
   // Search across other sports if not found in requested sport
   for (const s of ['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const) {
     if (s === sport) continue;
-    const found = (await getAthletesBySport(s)).find((a) => String(a.id) === String(id));
+    const found = (await getAthletesBySport(s)).find(
+      (a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId
+    );
     if (found) return found;
   }
   return null;
@@ -305,9 +311,12 @@ export async function getAthleteHistory(
   else if (sport === 'Football') filename = 'football_team_histories.json';
   else if (sport === 'Basketball') filename = 'basketball_team_histories.json';
 
+  const cleanId = String(id).replace(/^(b_nat_|b_club_|nat_|club_)/, '');
+
   const historyDict = await getJsonData<Record<string, HistoryPoint[]>>(filename);
-  if (historyDict && historyDict[String(id)]) {
-    return historyDict[String(id)];
+  if (historyDict) {
+    if (historyDict[String(id)]) return historyDict[String(id)];
+    if (historyDict[cleanId]) return historyDict[cleanId];
   }
 
   // Fallback to checking other history files if not found
@@ -318,8 +327,9 @@ export async function getAthleteHistory(
     'basketball_team_histories.json',
   ]) {
     const dict = await getJsonData<Record<string, HistoryPoint[]>>(f);
-    if (dict && dict[String(id)]) {
-      return dict[String(id)];
+    if (dict) {
+      if (dict[String(id)]) return dict[String(id)];
+      if (dict[cleanId]) return dict[cleanId];
     }
   }
 

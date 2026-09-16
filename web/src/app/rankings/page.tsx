@@ -46,26 +46,6 @@ export default function RankingsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  const fetchRankings = useCallback(async () => {
-    setLoading(true);
-    try {
-      const genderParam = activeCategory === 'Women' ? 'Women' : 'Men';
-      const data = await searchAthletes({
-        sport: activeSport,
-        gender: genderParam,
-        page,
-        pageSize: 20,
-        sortBy: 'rank',
-      });
-      setPlayers(data.items || []);
-      setTotalPages(data.totalPages || 1);
-    } catch (err) {
-      console.error('Failed to fetch rankings', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeSport, activeCategory, page]);
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -81,8 +61,40 @@ export default function RankingsPage() {
   }, [activeSport, activeCategory]);
 
   useEffect(() => {
-    fetchRankings();
-  }, [fetchRankings]);
+    let isCancelled = false;
+
+    const loadRankings = async () => {
+      setLoading(true);
+      try {
+        const genderParam = activeCategory === 'Women' ? 'Women' : 'Men';
+        const data = await searchAthletes({
+          sport: activeSport,
+          gender: genderParam,
+          page,
+          pageSize: 20,
+          sortBy: 'rank',
+        });
+        if (!isCancelled) {
+          setPlayers(data.items || []);
+          setTotalPages(data.totalPages || 1);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('Failed to fetch rankings', err);
+        }
+      } finally {
+        if (!isCancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadRankings();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [activeSport, activeCategory, page]);
 
   const getSportEmoji = (sport: string) => {
     switch (sport) {
@@ -136,7 +148,10 @@ export default function RankingsPage() {
         {(['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const).map(sport => (
           <button
             key={sport}
-            onClick={() => setActiveSport(sport)}
+            onClick={() => {
+              setActiveSport(sport);
+              setPage(1);
+            }}
             className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all shadow-xs flex items-center gap-2 whitespace-nowrap border cursor-pointer
               ${activeSport === sport 
                 ? 'bg-[#FA2E72] text-white border-transparent shadow-md' 
@@ -162,7 +177,10 @@ export default function RankingsPage() {
           {getCategoryOptions().map(cat => (
             <button
               key={cat.value}
-              onClick={() => setActiveCategory(cat.value as 'Men' | 'Women')}
+              onClick={() => {
+                setActiveCategory(cat.value as 'Men' | 'Women');
+                setPage(1);
+              }}
               className={`px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer
                 ${activeCategory === cat.value 
                   ? 'bg-[#E02263] text-white shadow-sm' 
@@ -187,7 +205,7 @@ export default function RankingsPage() {
       ) : (
         <div className="flex flex-col gap-3 mt-2">
           {players.map((player) => (
-            <div key={player.id} className="bg-white/80 hover:bg-white backdrop-blur-md border border-slate-100 rounded-3xl p-4 flex items-center justify-between shadow-xs hover:shadow-md transition-all group">
+            <div key={`${player.sport}-${player.id}`} className="bg-white/80 hover:bg-white backdrop-blur-md border border-slate-100 rounded-3xl p-4 flex items-center justify-between shadow-xs hover:shadow-md transition-all group">
               
               <div className="flex items-center gap-4 sm:gap-6 pl-2">
                 {/* Rank */}

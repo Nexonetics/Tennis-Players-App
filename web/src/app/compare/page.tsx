@@ -38,6 +38,22 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
   );
 };
 
+function formatCareerHighDate(dateStr?: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
+  const parts = dateStr.split(/[-/]/);
+  if (parts.length >= 2 && parts[0].length === 4) {
+    const year = parts[0];
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (months[monthIdx]) return `${months[monthIdx]} ${year}`;
+  }
+  return dateStr;
+}
+
 function ComparePageContent() {
   const searchParams = useSearchParams();
   const initialPlayer1 = searchParams.get('player1') || '';
@@ -349,11 +365,13 @@ function ComparePageContent() {
                   Summary Statistics
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                  <div className="w-1/3 text-left font-bold text-slate-800">{playerA.age ? `${playerA.age} Yrs` : 'N/A'}</div>
-                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Age</div>
-                  <div className="w-1/3 text-right font-bold text-slate-800">{playerB.age ? `${playerB.age} Yrs` : 'N/A'}</div>
-                </div>
+                {sport !== 'Football' && sport !== 'Basketball' && (
+                  <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
+                    <div className="w-1/3 text-left font-bold text-slate-800">{playerA.age ? `${playerA.age} Yrs` : 'N/A'}</div>
+                    <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Age</div>
+                    <div className="w-1/3 text-right font-bold text-slate-800">{playerB.age ? `${playerB.age} Yrs` : 'N/A'}</div>
+                  </div>
+                )}
 
                 <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
                   <div className="w-1/3 text-left font-bold text-slate-800">{playerA.country}</div>
@@ -361,15 +379,17 @@ function ComparePageContent() {
                   <div className="w-1/3 text-right font-bold text-slate-800">{playerB.country}</div>
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                  <div className="w-1/3 text-left font-bold text-slate-800">
-                    {playerA.winRate !== undefined ? `${playerA.winRate}%` : 'N/A'}
+                {sport !== 'Football' && sport !== 'Basketball' && (playerA.winRate !== undefined || playerB.winRate !== undefined) && (
+                  <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
+                    <div className="w-1/3 text-left font-bold text-slate-800">
+                      {playerA.winRate !== undefined ? `${playerA.winRate}%` : 'N/A'}
+                    </div>
+                    <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Win %</div>
+                    <div className="w-1/3 text-right font-bold text-slate-800">
+                      {playerB.winRate !== undefined ? `${playerB.winRate}%` : 'N/A'}
+                    </div>
                   </div>
-                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Win %</div>
-                  <div className="w-1/3 text-right font-bold text-slate-800">
-                    {playerB.winRate !== undefined ? `${playerB.winRate}%` : 'N/A'}
-                  </div>
-                </div>
+                )}
 
                 <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4 bg-pink-50/50 rounded-lg my-1">
                   <div className="w-1/3 text-left font-bold text-[#FA2E72]">#{playerA.ranking}</div>
@@ -380,10 +400,20 @@ function ComparePageContent() {
                 <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
                   <div className="w-1/3 text-left font-bold text-[#FA2E72]">
                     #{playerA.careerHighRank || playerA.ranking}
+                    {playerA.careerHighDate && (
+                      <span className="text-xs font-normal text-slate-500 ml-1">
+                        ({formatCareerHighDate(playerA.careerHighDate)})
+                      </span>
+                    )}
                   </div>
                   <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Career High Rank</div>
                   <div className="w-1/3 text-right font-bold text-indigo-600">
                     #{playerB.careerHighRank || playerB.ranking}
+                    {playerB.careerHighDate && (
+                      <span className="text-xs font-normal text-slate-500 ml-1">
+                        ({formatCareerHighDate(playerB.careerHighDate)})
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

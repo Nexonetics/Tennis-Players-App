@@ -28,7 +28,7 @@ export const Sidebar: React.FC = () => {
     <aside className="relative w-60 min-h-screen bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 select-none overflow-hidden">
       {/* Top section with logo and navigation */}
       <div className="z-10 pt-6 px-6">
-        <Link href="/rankings">
+        <Link href="/">
           <SportsSearchLogo className="mb-8" />
         </Link>
 

@@ -274,7 +274,7 @@ export default function SearchPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-5">
           {players.map((player) => (
             <div
-              key={player.id}
+              key={`${player.sport}-${player.id}`}
               className="bg-white rounded-3xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition-all relative flex flex-col items-center text-center group"
             >
               {/* Rank Badge */}
