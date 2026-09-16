@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Radio } from 'lucide-react';
+import { getAssetUrl } from '@/lib/getAssetUrl';
 
 export const HeroBanner: React.FC = () => {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -12,7 +13,7 @@ export const HeroBanner: React.FC = () => {
     <div className="relative w-full h-[220px] rounded-3xl overflow-hidden shadow-sm select-none">
       {/* Background Image */}
       <Image
-        src="/images/hero-tennis.jpg"
+        src={getAssetUrl('/images/hero-tennis.jpg')}
         alt="Game On Tennis Court"
         fill
         sizes="100vw"

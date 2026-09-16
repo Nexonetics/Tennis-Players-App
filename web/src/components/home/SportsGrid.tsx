@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { sportCategories } from '@/data/dummyData';
+import { getAssetUrl } from '@/lib/getAssetUrl';
 
 const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, className = '' }) => {
   switch (name) {
@@ -62,7 +63,7 @@ export const SportsGrid: React.FC = () => {
         >
           {/* Background image */}
           <Image
-            src={sport.image}
+            src={getAssetUrl(sport.image)}
             alt={sport.title}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
