@@ -1,31 +1,32 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { Calendar, ArrowRight } from 'lucide-react';
 import { upcomingMatches } from '@/data/dummyData';
 import { TeamBadge } from '../ui/TeamBadge';
 
 export const UpcomingMatches: React.FC = () => {
   return (
-    <section className="w-full mt-6 select-none">
+    <section className="w-full mt-4 sm:mt-6 select-none">
       {/* Section Header */}
       <div className="flex items-center justify-between mb-3.5">
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-[#FA2E72]" strokeWidth={2.2} />
           <h2 className="text-sm font-bold text-slate-900 tracking-tight">Upcoming Matches</h2>
         </div>
-        <button className="flex items-center gap-1 text-xs font-semibold text-[#FA2E72] hover:text-[#E02263] transition-colors cursor-pointer">
+        <Link href="/rankings" className="flex items-center gap-1 text-xs font-semibold text-[#FA2E72] hover:text-[#E02263] transition-colors cursor-pointer">
           <span>View All</span>
           <ArrowRight className="w-3 h-3" />
-        </button>
+        </Link>
       </div>
 
       {/* 4 Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
         {upcomingMatches.map((match) => (
           <div
             key={match.id}
-            className="relative bg-white rounded-3xl p-4 border border-slate-100 shadow-xs flex flex-col justify-between overflow-hidden group hover:shadow-sm transition-all duration-200"
+            className="relative bg-white rounded-3xl p-4 border border-slate-100 shadow-xs flex flex-col justify-between overflow-hidden group hover:shadow-sm transition-all duration-200 active:scale-[0.99]"
           >
             {/* Subtle top right decorative pink glow */}
             <div className="absolute -top-6 -right-6 w-20 h-20 bg-[#FDF2F4] rounded-full blur-xl pointer-events-none opacity-80" />
