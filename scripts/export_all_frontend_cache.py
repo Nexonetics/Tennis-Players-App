@@ -99,22 +99,19 @@ def export_all():
                         "date": dt_str
                     }
 
-            # Latest snapshot
-            if (r.ranking_year, r.ranking_month, r.ranking_date) == (target_year, target_month, target_date):
-                hp = hp_map.get(r.player_id)
-                if hp:
-                    if hp.gender == 0:
-                        if r.rank not in latest_ranks_m:
-                            latest_ranks_m[r.rank] = (hp, r.rank)
-                    else:
-                        if r.rank not in latest_ranks_f:
-                            latest_ranks_f[r.rank] = (hp, r.rank)
+            # Latest rank per player
+            hp = hp_map.get(r.player_id)
+            if hp:
+                if hp.gender == 0:
+                    latest_ranks_m[hp.id] = (hp, r.rank)
+                else:
+                    latest_ranks_f[hp.id] = (hp, r.rank)
 
         # Build tennis player export list
         tennis_players_export = []
-        for gender_name, ranks_dict in [("M", latest_ranks_m), ("F", latest_ranks_f)]:
-            for rank_num in sorted(ranks_dict.keys()):
-                hp, cur_rank = ranks_dict[rank_num]
+        for gender_name, player_dict in [("M", latest_ranks_m), ("F", latest_ranks_f)]:
+            sorted_tuples = sorted(player_dict.values(), key=lambda x: (x[1] if x[1] else 99999, x[0].id))
+            for hp, cur_rank in sorted_tuples:
                 full_name = f"{hp.first_name} {hp.last_name}".strip()
                 old_p = legacy_tennis_map.get(full_name.lower())
 
@@ -218,20 +215,18 @@ def export_all():
                         "date": dt_str
                     }
 
-            if (r.ranking_year, r.ranking_month, r.ranking_date) == (target_year, target_month, target_date):
-                hp = hp_tt_map.get(r.player_id)
-                if hp:
-                    if hp.gender == 0:
-                        if r.rank not in latest_ranks_tt_m:
-                            latest_ranks_tt_m[r.rank] = (hp, r.rank)
-                    else:
-                        if r.rank not in latest_ranks_tt_f:
-                            latest_ranks_tt_f[r.rank] = (hp, r.rank)
+            # Latest rank per TT player
+            hp = hp_tt_map.get(r.player_id)
+            if hp:
+                if hp.gender == 0:
+                    latest_ranks_tt_m[hp.id] = (hp, r.rank)
+                else:
+                    latest_ranks_tt_f[hp.id] = (hp, r.rank)
 
         tt_players_export = []
-        for gender_name, ranks_dict in [("M", latest_ranks_tt_m), ("F", latest_ranks_tt_f)]:
-            for rank_num in sorted(ranks_dict.keys()):
-                hp, cur_rank = ranks_dict[rank_num]
+        for gender_name, player_dict in [("M", latest_ranks_tt_m), ("F", latest_ranks_tt_f)]:
+            sorted_tuples = sorted(player_dict.values(), key=lambda x: (x[1] if x[1] else 99999, x[0].id))
+            for hp, cur_rank in sorted_tuples:
                 full_name = f"{hp.first_name} {hp.last_name}".strip()
                 old_p = legacy_tt_map.get(full_name.lower())
 
@@ -438,8 +433,23 @@ def export_all():
             json.dump(bc_export, f, ensure_ascii=False, indent=2)
         print(f"   Saved {os.path.join(OUT_DIR, 'basketball_clubs.json')} ({len(bc_export)} Basketball clubs)")
 
+        # -------------------------------------------------------------
+        # 7. SYNC ALL JSON ASSETS TO NEXT.JS WEB APP
+        # -------------------------------------------------------------
+        WEB_OUT_DIR = os.path.join(project_root, 'web', 'src', 'data', 'json')
+        if os.path.exists(os.path.join(project_root, 'web')):
+            import shutil
+            os.makedirs(WEB_OUT_DIR, exist_ok=True)
+            print("\n7. Syncing asset caches to Next.js Web App (web/src/data/json/)...")
+            json_files = [f for f in os.listdir(OUT_DIR) if f.endswith('.json')]
+            for jf in json_files:
+                src_path = os.path.join(OUT_DIR, jf)
+                dst_path = os.path.join(WEB_OUT_DIR, jf)
+                shutil.copy2(src_path, dst_path)
+                print(f"   Synced -> {dst_path}")
+
         print("\n" + "=" * 60)
-        print(f"ALL LOCAL ASSETS EXPORTED IN {time.time()-t0:.2f} SECONDS!")
+        print(f"ALL LOCAL ASSETS EXPORTED AND SYNCED IN {time.time()-t0:.2f} SECONDS!")
         print("=" * 60)
 
     finally:
