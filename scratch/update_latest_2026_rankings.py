@@ -355,8 +355,8 @@ def scrape_and_update_tt(db, target_date_str="2026-08-24"):
 if __name__ == "__main__":
     db = SessionLocal()
     try:
-        # Scrape Tennis for latest week 2026-08-31
-        scrape_and_update_tennis(db, "2026-08-31", atp_limit=200, wta_limit=200)
+        # Scrape Tennis for latest week 2026-08-31 with expanded limit 1000
+        scrape_and_update_tennis(db, "2026-08-31", atp_limit=1000, wta_limit=1000)
         # Scrape Table Tennis for latest week 2026-08-24
         scrape_and_update_tt(db, "2026-08-24")
     finally:

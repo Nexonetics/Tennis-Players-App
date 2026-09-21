@@ -103,11 +103,17 @@ def save_tennis_player_with_rank(player_data: dict) -> None:
     try:
         from sqlalchemy import func
         # --- Find or create TennisHistoricalPlayer ---
-        player = db.query(TennisHistoricalPlayer).filter(
+        q_tennis = db.query(TennisHistoricalPlayer).filter(
             func.lower(TennisHistoricalPlayer.first_name) == first_name.lower(),
             func.lower(TennisHistoricalPlayer.last_name) == last_name.lower(),
             TennisHistoricalPlayer.gender == gender_int,
-        ).first()
+        )
+        if b_year:
+            player = q_tennis.filter(
+                (TennisHistoricalPlayer.birth_year == b_year) | (TennisHistoricalPlayer.birth_year.is_(None))
+            ).first()
+        else:
+            player = q_tennis.first()
 
         if not player:
             player = TennisHistoricalPlayer(
@@ -212,11 +218,17 @@ def save_tt_player_with_rank(player_data: dict) -> None:
     try:
         from sqlalchemy import func
         # --- Find or create TableTennisHistoricalPlayer ---
-        player = db.query(TableTennisHistoricalPlayer).filter(
+        q_tt = db.query(TableTennisHistoricalPlayer).filter(
             func.lower(TableTennisHistoricalPlayer.first_name) == first_name.lower(),
             func.lower(TableTennisHistoricalPlayer.last_name) == last_name.lower(),
             TableTennisHistoricalPlayer.gender == gender_int,
-        ).first()
+        )
+        if b_year:
+            player = q_tt.filter(
+                (TableTennisHistoricalPlayer.birth_year == b_year) | (TableTennisHistoricalPlayer.birth_year.is_(None))
+            ).first()
+        else:
+            player = q_tt.first()
 
         if not player:
             player = TableTennisHistoricalPlayer(
