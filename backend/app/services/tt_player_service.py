@@ -80,6 +80,13 @@ class TtPlayerService:
             except ValueError:
                 pass
 
+        # Safeguard: If legacy profile table has a better (lower) career highest ranking, use that
+        if old_p and getattr(old_p, 'highest_ranking', None) and old_p.highest_ranking > 0:
+            if career_high_rank is None or old_p.highest_ranking < career_high_rank:
+                career_high_rank = old_p.highest_ranking
+                if getattr(old_p, 'highest_ranking_date', None):
+                    career_high_date = old_p.highest_ranking_date
+
         history = None
         if include_history:
             # Query all historical ranking checkpoints where rank is valid

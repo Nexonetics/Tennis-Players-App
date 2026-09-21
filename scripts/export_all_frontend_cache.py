@@ -127,8 +127,25 @@ def export_all():
                         pass
 
                 ch = career_high_map.get(hp.id, {})
-                career_high_rank = ch.get("rank") or (old_p.highest_ranking if old_p else cur_rank)
-                career_high_date = ch.get("date") or (old_p.highest_ranking_date.isoformat() if old_p and old_p.highest_ranking_date else None)
+                ch_rank = ch.get("rank")
+                old_highest = old_p.highest_ranking if (old_p and old_p.highest_ranking and old_p.highest_ranking > 0) else None
+
+                if ch_rank and old_highest:
+                    if old_highest < ch_rank:
+                        career_high_rank = old_highest
+                        career_high_date = old_p.highest_ranking_date.isoformat() if (old_p and old_p.highest_ranking_date) else ch.get("date")
+                    else:
+                        career_high_rank = ch_rank
+                        career_high_date = ch.get("date")
+                elif ch_rank:
+                    career_high_rank = ch_rank
+                    career_high_date = ch.get("date")
+                elif old_highest:
+                    career_high_rank = old_highest
+                    career_high_date = old_p.highest_ranking_date.isoformat() if (old_p and old_p.highest_ranking_date) else None
+                else:
+                    career_high_rank = cur_rank
+                    career_high_date = None
 
                 item = {
                     "id": hp.id,
