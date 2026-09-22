@@ -256,7 +256,7 @@ export default function RankingsPage() {
                 </div>
                 
                 {/* Action Button */}
-                <Link href={`/player/${player.id}?sport=${encodeURIComponent(activeSport)}`}>
+                <Link href={`/player?id=${player.id}&sport=${encodeURIComponent(activeSport)}`}>
                   <button className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-pink-50 text-[#FA2E72] flex items-center justify-center hover:bg-[#FA2E72] hover:text-white transition-all shadow-sm cursor-pointer active:scale-90">
                     <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" strokeWidth={2.5} />
                   </button>

@@ -39,8 +39,9 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
   );
 };
 
-export default function PlayerClientPage({ playerId }: { playerId: string }) {
+export default function PlayerClientPage({ playerId }: { playerId?: string }) {
   const searchParams = useSearchParams();
+  const effectiveId = searchParams.get('id') || playerId || '';
   const sportParam = searchParams.get('sport') || 'Tennis';
 
   const [athlete, setAthlete] = useState<UnifiedAthlete | null>(null);
@@ -49,14 +50,19 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
 
   useEffect(() => {
     async function fetchPlayerData() {
+      if (!effectiveId) {
+        setAthlete(null);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
         const sport = (['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(sportParam)
           ? sportParam
           : 'Tennis') as 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball';
-        const foundAthlete = await getAthleteById(playerId, sport);
+        const foundAthlete = await getAthleteById(effectiveId, sport);
         if (foundAthlete) {
-          const foundHistory = await getAthleteHistory(playerId, foundAthlete.sport);
+          const foundHistory = await getAthleteHistory(effectiveId, foundAthlete.sport);
           setAthlete(foundAthlete);
           setHistory(foundHistory);
         } else {
@@ -70,7 +76,7 @@ export default function PlayerClientPage({ playerId }: { playerId: string }) {
       }
     }
     fetchPlayerData();
-  }, [playerId, sportParam]);
+  }, [effectiveId, sportParam]);
 
   if (loading) {
     return (

@@ -9,7 +9,8 @@ export async function generateStaticParams() {
     const ids = new Set<string>();
     for (const s of sports) {
       const list = await getAthletesBySport(s);
-      list.forEach((a) => {
+      // Pre-render top 50 featured athletes per sport to keep static export lightweight (~10MB)
+      list.slice(0, 50).forEach((a) => {
         if (a.id) ids.add(String(a.id));
       });
     }

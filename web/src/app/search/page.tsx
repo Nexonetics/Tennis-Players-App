@@ -318,7 +318,7 @@ export default function SearchPage() {
               </div>
 
               {/* Action */}
-              <Link href={`/player/${player.id}?sport=${encodeURIComponent(sport)}`} className="w-full mt-auto">
+              <Link href={`/player?id=${player.id}&sport=${encodeURIComponent(sport)}`} className="w-full mt-auto">
                 <button className="w-full py-1.5 sm:py-2 bg-pink-50 hover:bg-[#FA2E72] text-[#FA2E72] hover:text-white rounded-full text-[11px] sm:text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95">
                   View Profile →
                 </button>
