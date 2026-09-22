@@ -189,9 +189,16 @@ class ApiService {
     String? gender,
   }) async {
     await _loadLocalDataIfNeeded();
-    final q = query.toLowerCase();
-    var list =
-        _localPlayers!.where((p) => p.name.toLowerCase().contains(q)).toList();
+    final q = query.toLowerCase().trim();
+    final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+    var list = _localPlayers!.where((p) {
+      final nameLower = p.name.toLowerCase();
+      final countryLower = (p.country ?? '').toLowerCase();
+      if (nameLower.contains(q) || countryLower.contains(q)) return true;
+      return tokens.isNotEmpty &&
+          tokens.every((t) => nameLower.contains(t) || countryLower.contains(t));
+    }).toList();
+
     if (gender != null) {
       list = list.where((p) => p.gender == gender).toList();
     }
@@ -314,10 +321,16 @@ class ApiService {
     String? gender,
   }) async {
     await _loadLocalDataIfNeeded();
-    final q = query.toLowerCase();
-    var list = _localTtPlayers!
-        .where((p) => p.name.toLowerCase().contains(q))
-        .toList();
+    final q = query.toLowerCase().trim();
+    final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
+    var list = _localTtPlayers!.where((p) {
+      final nameLower = p.name.toLowerCase();
+      final countryLower = (p.country ?? '').toLowerCase();
+      if (nameLower.contains(q) || countryLower.contains(q)) return true;
+      return tokens.isNotEmpty &&
+          tokens.every((t) => nameLower.contains(t) || countryLower.contains(t));
+    }).toList();
+
     if (gender != null) {
       list = list.where((p) => p.gender == gender).toList();
     }
