@@ -214,14 +214,33 @@ export function searchAthletes({
   let list = getAthletesBySport(sport, gender);
 
   if (query && query.trim() !== '') {
-    const q = query.toLowerCase().trim();
-    list = list.filter(
-      (a) =>
-        a.name.toLowerCase().includes(q) ||
-        a.country.toLowerCase().includes(q) ||
-        a.countryCode.toLowerCase().includes(q) ||
-        String(a.ranking) === q
-    );
+    const rawQ = query.toLowerCase().trim();
+    const tokens = rawQ.split(/\s+/).filter(Boolean);
+    list = list.filter((a) => {
+      const nameLower = a.name.toLowerCase();
+      const countryLower = a.country.toLowerCase();
+      const countryCodeLower = a.countryCode.toLowerCase();
+      const rankStr = String(a.ranking);
+
+      // Direct exact/substring match
+      if (
+        nameLower.includes(rawQ) ||
+        countryLower.includes(rawQ) ||
+        countryCodeLower.includes(rawQ) ||
+        rankStr === rawQ
+      ) {
+        return true;
+      }
+
+      // Tokenized search: all query words must match name, country, code or rank
+      return tokens.every(
+        (token) =>
+          nameLower.includes(token) ||
+          countryLower.includes(token) ||
+          countryCodeLower.includes(token) ||
+          rankStr === token
+      );
+    });
   }
 
   if (country && country.trim() !== '' && country !== 'Country' && country !== 'All') {
