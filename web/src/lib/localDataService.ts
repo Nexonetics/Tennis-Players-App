@@ -336,6 +336,66 @@ export async function searchAthletes({
   };
 }
 
+export async function searchAllAthletes(
+  query: string,
+  limit: number = 8
+): Promise<UnifiedAthlete[]> {
+  const rawQ = query.toLowerCase().trim();
+  if (!rawQ) return [];
+
+  const sports = ['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const;
+  const allAthletesPromises = sports.map((s) => getAthletesBySport(s));
+  const resultsBySport = await Promise.all(allAthletesPromises);
+  const allAthletes = resultsBySport.flat();
+
+  const tokens = rawQ.split(/\s+/).filter(Boolean);
+
+  const matched = allAthletes.filter((a) => {
+    const nameLower = a.name.toLowerCase();
+    const countryLower = a.country.toLowerCase();
+    const countryCodeLower = a.countryCode.toLowerCase();
+    const rankStr = String(a.ranking);
+
+    if (
+      nameLower.includes(rawQ) ||
+      countryLower.includes(rawQ) ||
+      countryCodeLower.includes(rawQ) ||
+      rankStr === rawQ
+    ) {
+      return true;
+    }
+
+    return tokens.every(
+      (token) =>
+        nameLower.includes(token) ||
+        countryLower.includes(token) ||
+        countryCodeLower.includes(token) ||
+        rankStr === token
+    );
+  });
+
+  // Relevance ranking: exact/prefix name matches first, then rank
+  matched.sort((a, b) => {
+    const aName = a.name.toLowerCase();
+    const bName = b.name.toLowerCase();
+
+    const aExact = aName === rawQ;
+    const bExact = bName === rawQ;
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+
+    const aStartsWith = aName.startsWith(rawQ);
+    const bStartsWith = bName.startsWith(rawQ);
+    if (aStartsWith && !bStartsWith) return -1;
+    if (!aStartsWith && bStartsWith) return 1;
+
+    return a.ranking - b.ranking;
+  });
+
+  return matched.slice(0, limit);
+}
+
+
 export async function getAthleteById(
   id: string,
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'

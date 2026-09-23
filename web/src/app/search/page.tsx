@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Search as SearchIcon, MapPin, BarChart3, Loader2 } from 'lucide-react';
 import { UnifiedAthlete } from '@/types';
 import { getUniqueCountries, searchAthletes } from '@/lib/localDataService';
@@ -38,10 +39,18 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
   );
 };
 
-export default function SearchPage() {
-  const [sport, setSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>('Tennis');
+function SearchContent() {
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get('q') || '';
+  const initialSport = searchParams.get('sport');
+
+  const [sport, setSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>(
+    initialSport && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(initialSport)
+      ? (initialSport as any)
+      : 'Tennis'
+  );
   const [gender, setGender] = useState<'Men' | 'Women'>('Men');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCountry, setSelectedCountry] = useState('All');
   const [rankRange, setRankRange] = useState('All');
   const [sortBy, setSortBy] = useState<'rank' | 'points' | 'name'>('rank');
@@ -52,6 +61,19 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Synchronize state when URL query params change
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (q !== null && q !== searchQuery) {
+      setSearchQuery(q);
+    }
+    const s = searchParams.get('sport');
+    if (s && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(s) && s !== sport) {
+      setSport(s as any);
+    }
+  }, [searchParams]);
+
 
   // Fetch unique countries for dropdown
   useEffect(() => {
@@ -353,3 +375,19 @@ export default function SearchPage() {
     </div>
   );
 }
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-10 h-10 text-[#FA2E72] animate-spin" />
+          <span className="text-sm font-semibold text-slate-500 font-medium">Loading search engine...</span>
+        </div>
+      }
+    >
+      <SearchContent />
+    </Suspense>
+  );
+}
+

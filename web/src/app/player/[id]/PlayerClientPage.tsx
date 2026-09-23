@@ -104,9 +104,14 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
 
   // Format ranking history for SVG chart
   const recentHistory = history.length > 0 ? history.slice(-12) : [];
-  const minRankInHist = recentHistory.length > 0 ? Math.min(...recentHistory.map((h) => h.ranking)) : athlete.ranking;
-  const maxRankInHist = recentHistory.length > 0 ? Math.max(...recentHistory.map((h) => h.ranking)) : athlete.ranking + 10;
+  const validHistoryRanks = recentHistory
+    .map((h) => (typeof h.ranking === 'number' && !isNaN(h.ranking) ? h.ranking : parseInt(String(h.ranking), 10)))
+    .filter((r) => !isNaN(r));
+
+  const minRankInHist = validHistoryRanks.length > 0 ? Math.min(...validHistoryRanks) : athlete.ranking;
+  const maxRankInHist = validHistoryRanks.length > 0 ? Math.max(...validHistoryRanks) : athlete.ranking + 10;
   const rankSpan = Math.max(1, maxRankInHist - minRankInHist);
+
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8 pb-16">
@@ -285,10 +290,14 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                     const drawH = 110;
 
                     const pts = recentHistory.map((pt, idx) => {
-                      const x = padL + (idx / Math.max(1, recentHistory.length - 1)) * drawW;
-                      const y = padT + ((pt.ranking - minRankInHist) / rankSpan) * drawH;
-                      return { x, y, ranking: pt.ranking, date: pt.date, idx };
+                      const rawRank = typeof pt.ranking === 'number' && !isNaN(pt.ranking) ? pt.ranking : (parseInt(String(pt.ranking), 10) || athlete.ranking);
+                      const calcX = padL + (idx / Math.max(1, recentHistory.length - 1)) * drawW;
+                      const calcY = padT + ((rawRank - minRankInHist) / rankSpan) * drawH;
+                      const x = isNaN(calcX) ? padL : calcX;
+                      const y = isNaN(calcY) ? padT : calcY;
+                      return { x, y, ranking: rawRank, date: pt.date || '', idx };
                     });
+
 
                     const polylineStr = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
                     const polygonStr = `${pts[0].x.toFixed(1)},140 ${polylineStr} ${pts[pts.length - 1].x.toFixed(1)},140`;

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { UnifiedAthlete } from '@/types';
@@ -38,8 +39,15 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
   );
 };
 
-export default function RankingsPage() {
-  const [activeSport, setActiveSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>('Tennis');
+function RankingsContent() {
+  const searchParams = useSearchParams();
+  const sportParam = searchParams.get('sport');
+
+  const [activeSport, setActiveSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>(
+    sportParam && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(sportParam)
+      ? (sportParam as any)
+      : 'Tennis'
+  );
   const [activeCategory, setActiveCategory] = useState<'Men' | 'Women'>('Men');
   const [players, setPlayers] = useState<UnifiedAthlete[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,14 +55,12 @@ export default function RankingsPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const sportParam = params.get('sport');
-      if (sportParam && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(sportParam)) {
-        setActiveSport(sportParam as 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball');
-      }
+    const s = searchParams.get('sport');
+    if (s && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(s) && s !== activeSport) {
+      setActiveSport(s as any);
     }
-  }, []);
+  }, [searchParams, activeSport]);
+
 
   useEffect(() => {
     setPage(1);
@@ -293,3 +299,19 @@ export default function RankingsPage() {
     </div>
   );
 }
+
+export default function RankingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-10 h-10 text-[#FA2E72] animate-spin" />
+          <span className="text-sm font-semibold text-slate-500 font-medium">Loading rankings...</span>
+        </div>
+      }
+    >
+      <RankingsContent />
+    </Suspense>
+  );
+}
+
