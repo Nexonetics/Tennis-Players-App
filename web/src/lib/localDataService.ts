@@ -7,8 +7,13 @@ import {
   HistoryPoint,
 } from '@/types';
 
-// In-memory cache for parsed JSON data
+// In-memory cache for raw parsed JSON data
 const dataCache: Record<string, any> = {};
+
+// In-memory cache for transformed UnifiedAthlete arrays per sport
+const athletesCache: Record<string, UnifiedAthlete[]> = {};
+const athleteIdMap: Record<string, UnifiedAthlete> = {};
+const historyFileCache: Record<string, Record<string, HistoryPoint[]>> = {};
 
 async function getJsonData<T>(filename: string): Promise<T> {
   if (dataCache[filename]) {
@@ -113,11 +118,19 @@ export function toUnifiedAthlete(
   const idStr = String(raw.id);
   const country = raw.country || raw.city || 'Unknown';
   const countryCode = getCountryCode(country);
-  const ranking = typeof raw.ranking === 'number' ? raw.ranking : 9999;
-  const careerHigh = raw.career_high_rank || raw.highest_ranking || ranking;
+
+  const rawRank = typeof raw.ranking === 'number'
+    ? raw.ranking
+    : (parseInt(String(raw.ranking), 10) || 0);
+
+  const ranking = rawRank > 0 ? rawRank : 9999;
+
+  const rawHigh = raw.career_high_rank || raw.highest_ranking;
+  const parsedHigh = typeof rawHigh === 'number' ? rawHigh : (parseInt(String(rawHigh), 10) || 0);
+  const careerHigh = parsedHigh > 0 ? parsedHigh : (ranking < 9999 ? ranking : undefined);
 
   let winRate: number | undefined;
-  if (typeof raw.win_percentage === 'number') {
+  if (typeof raw.win_percentage === 'number' && raw.win_percentage > 0) {
     winRate = raw.win_percentage;
   } else if (raw.wins !== undefined && raw.losses !== undefined) {
     const total = raw.wins + raw.losses;
@@ -151,8 +164,10 @@ export function toUnifiedAthlete(
     points = `${(12000 - ranking * 800).toLocaleString()}`;
   } else if (ranking <= 50) {
     points = `${(4000 - ranking * 50).toLocaleString()}`;
-  } else {
+  } else if (ranking < 9999) {
     points = `${Math.max(100, 1500 - ranking * 10).toLocaleString()}`;
+  } else {
+    points = '500';
   }
 
   return {
@@ -181,23 +196,36 @@ export async function getAthletesBySport(
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball',
   genderFilter?: string
 ): Promise<UnifiedAthlete[]> {
-  let rawList: any[] = [];
-  if (sport === 'Tennis') {
-    rawList = await getJsonData<TennisPlayer[]>('players.json');
-  } else if (sport === 'Table Tennis') {
-    rawList = await getJsonData<TableTennisPlayer[]>('tt_players.json');
-  } else if (sport === 'Football') {
-    rawList = await getJsonData<FootballTeam[]>('football_national_teams.json');
-  } else if (sport === 'Basketball') {
-    const clubs = await getJsonData<BasketballClub[]>('basketball_clubs.json');
-    const nats = await getJsonData<any[]>('basketball_national_teams.json');
-    rawList = [
-      ...clubs.map((c) => ({ ...c, id: `b_club_${c.id}` })),
-      ...nats.map((n) => ({ ...n, id: `b_nat_${n.id}` })),
-    ];
+  if (!athletesCache[sport]) {
+    let rawList: any[] = [];
+    if (sport === 'Tennis') {
+      rawList = await getJsonData<TennisPlayer[]>('players.json');
+    } else if (sport === 'Table Tennis') {
+      rawList = await getJsonData<TableTennisPlayer[]>('tt_players.json');
+    } else if (sport === 'Football') {
+      rawList = await getJsonData<FootballTeam[]>('football_national_teams.json');
+    } else if (sport === 'Basketball') {
+      // FIBA Basketball National Teams ONLY (matching Flutter app)
+      rawList = await getJsonData<any[]>('basketball_national_teams.json');
+    }
+
+    const converted = rawList.map((item) => toUnifiedAthlete(item, sport));
+    converted.sort((a, b) => a.ranking - b.ranking);
+
+    athletesCache[sport] = converted;
+
+    // Index into global ID map for O(1) detail lookup
+    converted.forEach((a) => {
+      athleteIdMap[`${sport}_${a.id}`] = a;
+      athleteIdMap[`any_${a.id}`] = a;
+      if (a.extraInfo?.id) {
+        athleteIdMap[`${sport}_${a.extraInfo.id}`] = a;
+        athleteIdMap[`any_${a.extraInfo.id}`] = a;
+      }
+    });
   }
 
-  let athletes = rawList.map((item) => toUnifiedAthlete(item, sport));
+  let athletes = athletesCache[sport];
 
   if (genderFilter) {
     const gLower = genderFilter.toLowerCase().trim();
@@ -208,8 +236,6 @@ export async function getAthletesBySport(
     }
   }
 
-  // Sort by ranking by default
-  athletes.sort((a, b) => a.ranking - b.ranking);
   return athletes;
 }
 
@@ -236,8 +262,16 @@ export async function searchAthletes({
 }) {
   let list = await getAthletesBySport(sport, gender);
 
-  if (query && query.trim() !== '') {
-    const rawQ = query.toLowerCase().trim();
+  const isSearchQuery = query && query.trim() !== '';
+
+  // If user is just browsing rankings (no search query & no specific rank bounds),
+  // filter out unranked / legacy entries (ranking === 9999) so only valid active ranks show.
+  if (!isSearchQuery && minRank === undefined && maxRank === undefined) {
+    list = list.filter((a) => a.ranking < 9999);
+  }
+
+  if (isSearchQuery) {
+    const rawQ = query!.toLowerCase().trim();
     const tokens = rawQ.split(/\s+/).filter(Boolean);
     list = list.filter((a) => {
       const nameLower = a.name.toLowerCase();
@@ -280,11 +314,12 @@ export async function searchAthletes({
   }
 
   if (sortBy === 'name') {
-    list.sort((a, b) => a.name.localeCompare(b.name));
+    list = [...list].sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortBy === 'points') {
-    list.sort((a, b) => (b.winRate || 0) - (a.winRate || 0));
+    list = [...list].sort((a, b) => (b.winRate || 0) - (a.winRate || 0));
   } else {
-    list.sort((a, b) => a.ranking - b.ranking);
+    // Rank sort: ranked players first, then name
+    list = [...list].sort((a, b) => a.ranking - b.ranking);
   }
 
   const total = list.length;
@@ -306,18 +341,39 @@ export async function getAthleteById(
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'
 ): Promise<UnifiedAthlete | null> {
   const targetId = String(id);
+  const cleanId = targetId.replace(/^(b_nat_|b_club_|nat_|club_)/, '');
+
+  // 1. Check O(1) indexed lookup map
+  if (athleteIdMap[`${sport}_${targetId}`]) return athleteIdMap[`${sport}_${targetId}`];
+  if (athleteIdMap[`any_${targetId}`]) return athleteIdMap[`any_${targetId}`];
+  if (athleteIdMap[`${sport}_${cleanId}`]) return athleteIdMap[`${sport}_${cleanId}`];
+  if (athleteIdMap[`any_${cleanId}`]) return athleteIdMap[`any_${cleanId}`];
+
+  // 2. Ensure current sport is loaded
   const list = await getAthletesBySport(sport);
-  const athlete = list.find((a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId);
+  const athlete = list.find(
+    (a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId || String(a.id) === cleanId || String(a.extraInfo?.id) === cleanId
+  );
   if (athlete) return athlete;
 
-  // Search across other sports if not found in requested sport
+  // 3. Check other sports
   for (const s of ['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const) {
     if (s === sport) continue;
     const found = (await getAthletesBySport(s)).find(
-      (a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId
+      (a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId || String(a.id) === cleanId || String(a.extraInfo?.id) === cleanId
     );
     if (found) return found;
   }
+
+  // 4. Fallback check for basketball clubs if requested ID was a club ID
+  if (targetId.startsWith('b_club_') || targetId.startsWith('club_') || sport === 'Basketball') {
+    const clubs = await getJsonData<BasketballClub[]>('basketball_clubs.json');
+    const club = clubs.find((c) => String(c.id) === cleanId || String(c.id) === targetId);
+    if (club) {
+      return toUnifiedAthlete({ ...club, id: `b_club_${club.id}` }, 'Basketball');
+    }
+  }
+
   return null;
 }
 
@@ -325,17 +381,20 @@ export async function getAthleteHistory(
   id: string,
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'
 ): Promise<HistoryPoint[]> {
-  let filename = 'player_histories.json';
-  if (sport === 'Table Tennis') filename = 'tt_player_histories.json';
-  else if (sport === 'Football') filename = 'football_team_histories.json';
-  else if (sport === 'Basketball') filename = 'basketball_team_histories.json';
+  let primaryFilename = 'player_histories.json';
+  if (sport === 'Table Tennis') primaryFilename = 'tt_player_histories.json';
+  else if (sport === 'Football') primaryFilename = 'football_team_histories.json';
+  else if (sport === 'Basketball') primaryFilename = 'basketball_team_histories.json';
 
   const cleanId = String(id).replace(/^(b_nat_|b_club_|nat_|club_)/, '');
 
-  const historyDict = await getJsonData<Record<string, HistoryPoint[]>>(filename);
-  if (historyDict) {
-    if (historyDict[String(id)]) return historyDict[String(id)];
-    if (historyDict[cleanId]) return historyDict[cleanId];
+  if (!historyFileCache[primaryFilename]) {
+    historyFileCache[primaryFilename] = await getJsonData<Record<string, HistoryPoint[]>>(primaryFilename);
+  }
+  const primaryDict = historyFileCache[primaryFilename];
+  if (primaryDict) {
+    if (primaryDict[String(id)]) return primaryDict[String(id)];
+    if (primaryDict[cleanId]) return primaryDict[cleanId];
   }
 
   // Fallback to checking other history files if not found
@@ -345,7 +404,11 @@ export async function getAthleteHistory(
     'football_team_histories.json',
     'basketball_team_histories.json',
   ]) {
-    const dict = await getJsonData<Record<string, HistoryPoint[]>>(f);
+    if (f === primaryFilename) continue;
+    if (!historyFileCache[f]) {
+      historyFileCache[f] = await getJsonData<Record<string, HistoryPoint[]>>(f);
+    }
+    const dict = historyFileCache[f];
     if (dict) {
       if (dict[String(id)]) return dict[String(id)];
       if (dict[cleanId]) return dict[cleanId];
@@ -365,3 +428,4 @@ export async function getUniqueCountries(
   });
   return Array.from(countrySet).sort();
 }
+
