@@ -176,6 +176,41 @@ export function getAthletesBySport(
 
   let athletes = rawList.map((item) => toUnifiedAthlete(item, sport));
 
+  // Runtime deduplication safeguard: strictly 1 entry per athlete photo / normalized name+dob
+  const uniqueNameDob = new Set<string>();
+  const seenImageUrls = new Set<string>();
+
+  const deduplicated: UnifiedAthlete[] = [];
+  for (const ath of athletes) {
+    const img = ath.imageUrl;
+    const isGeneric = !img || img.includes('wikimedia.org') || img.includes('placeholder');
+
+    let isDup = false;
+    if (img && !isGeneric) {
+      if (seenImageUrls.has(img)) {
+        isDup = true;
+      } else {
+        seenImageUrls.add(img);
+      }
+    }
+
+    if (!isDup && ath.name && ath.birthDate) {
+      const normName = ath.name.toLowerCase().trim().split(/\s+/).sort().join(' ');
+      const key = `${normName}_${ath.birthDate}`;
+      if (uniqueNameDob.has(key)) {
+        isDup = true;
+      } else {
+        uniqueNameDob.add(key);
+      }
+    }
+
+    if (!isDup) {
+      deduplicated.push(ath);
+    }
+  }
+
+  athletes = deduplicated;
+
   if (genderFilter) {
     const gLower = genderFilter.toLowerCase().trim();
     if (gLower.includes('wta') || gLower.includes('women') || gLower === 'f') {
@@ -188,6 +223,7 @@ export function getAthletesBySport(
   // Sort by ranking by default
   athletes.sort((a, b) => a.ranking - b.ranking);
   return athletes;
+
 }
 
 export function searchAthletes({
