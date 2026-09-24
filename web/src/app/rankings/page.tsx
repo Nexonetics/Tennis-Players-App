@@ -211,7 +211,7 @@ function RankingsContent() {
       ) : (
         <div className="flex flex-col gap-2.5 sm:gap-3 mt-1">
           {players.map((player) => (
-            <div key={`${player.sport}-${player.id}`} className="bg-white/90 hover:bg-white backdrop-blur-md border border-slate-100 rounded-3xl p-3 sm:p-4 flex items-center justify-between shadow-xs hover:shadow-md transition-all group active:scale-[0.99]">
+            <div key={`${player.sport}-${player.gender}-${player.id}-${player.ranking}`} className="bg-white/90 hover:bg-white backdrop-blur-md border border-slate-100 rounded-3xl p-3 sm:p-4 flex items-center justify-between shadow-xs hover:shadow-md transition-all group active:scale-[0.99]">
               
               <div className="flex items-center gap-2.5 sm:gap-6 pl-1 sm:pl-2 min-w-0">
                 {/* Rank */}

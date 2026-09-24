@@ -77,12 +77,22 @@ def export_all():
         latest_ranks_m = {}
         latest_ranks_f = {}
 
-        # Dynamically detect the latest ranking date from DB
-        target_year, target_month, target_date = 1970, 1, 1
-        if all_tr:
-            latest_tr = all_tr[-1]
-            target_year, target_month, target_date = latest_tr.ranking_year, latest_tr.ranking_month, latest_tr.ranking_date
-            print(f"   Tennis latest date detected: {target_year}-{target_month:02d}-{target_date:02d}")
+        # Dynamically detect latest ranking date per gender
+        latest_date_m = None
+        latest_date_f = None
+
+        for r in reversed(all_tr):
+            hp = hp_map.get(r.player_id)
+            if hp:
+                d_tuple = (r.ranking_year, r.ranking_month, r.ranking_date)
+                if hp.gender == 0 and latest_date_m is None:
+                    latest_date_m = d_tuple
+                elif hp.gender == 1 and latest_date_f is None:
+                    latest_date_f = d_tuple
+                if latest_date_m and latest_date_f:
+                    break
+
+        print(f"   Tennis latest dates detected - Male: {latest_date_m}, Female: {latest_date_f}")
 
         for r in all_tr:
             spid = str(r.player_id)
@@ -99,13 +109,22 @@ def export_all():
                         "date": dt_str
                     }
 
-            # Latest rank per player
+            # Active rank from latest snapshot
             hp = hp_map.get(r.player_id)
             if hp:
-                if hp.gender == 0:
-                    latest_ranks_m[hp.id] = (hp, r.rank)
-                else:
-                    latest_ranks_f[hp.id] = (hp, r.rank)
+                d_tuple = (r.ranking_year, r.ranking_month, r.ranking_date)
+                target_d = latest_date_m if hp.gender == 0 else latest_date_f
+                if d_tuple == target_d:
+                    if hp.gender == 0:
+                        latest_ranks_m[hp.id] = (hp, r.rank)
+                    else:
+                        latest_ranks_f[hp.id] = (hp, r.rank)
+                elif hp.id not in (latest_ranks_m if hp.gender == 0 else latest_ranks_f):
+                    # Player not in latest snapshot date: assign unranked (9999)
+                    if hp.gender == 0:
+                        latest_ranks_m[hp.id] = (hp, 9999)
+                    else:
+                        latest_ranks_f[hp.id] = (hp, 9999)
 
         # Build tennis player export list
         tennis_players_export = []
@@ -197,9 +216,21 @@ def export_all():
         latest_ranks_tt_m = {}
         latest_ranks_tt_f = {}
 
-        if all_ttr:
-            latest = all_ttr[-1]
-            target_year, target_month, target_date = latest.ranking_year, latest.ranking_month, latest.ranking_date
+        latest_tt_date_m = None
+        latest_tt_date_f = None
+
+        for r in reversed(all_ttr):
+            hp = hp_tt_map.get(r.player_id)
+            if hp:
+                d_tuple = (r.ranking_year, r.ranking_month, r.ranking_date)
+                if hp.gender == 0 and latest_tt_date_m is None:
+                    latest_tt_date_m = d_tuple
+                elif hp.gender == 1 and latest_tt_date_f is None:
+                    latest_tt_date_f = d_tuple
+                if latest_tt_date_m and latest_tt_date_f:
+                    break
+
+        print(f"   Table Tennis latest dates detected - Male: {latest_tt_date_m}, Female: {latest_tt_date_f}")
 
         for r in all_ttr:
             spid = str(r.player_id)
@@ -215,13 +246,21 @@ def export_all():
                         "date": dt_str
                     }
 
-            # Latest rank per TT player
+            # Active rank from latest snapshot
             hp = hp_tt_map.get(r.player_id)
             if hp:
-                if hp.gender == 0:
-                    latest_ranks_tt_m[hp.id] = (hp, r.rank)
-                else:
-                    latest_ranks_tt_f[hp.id] = (hp, r.rank)
+                d_tuple = (r.ranking_year, r.ranking_month, r.ranking_date)
+                target_d = latest_tt_date_m if hp.gender == 0 else latest_tt_date_f
+                if d_tuple == target_d:
+                    if hp.gender == 0:
+                        latest_ranks_tt_m[hp.id] = (hp, r.rank)
+                    else:
+                        latest_ranks_tt_f[hp.id] = (hp, r.rank)
+                elif hp.id not in (latest_ranks_tt_m if hp.gender == 0 else latest_ranks_tt_f):
+                    if hp.gender == 0:
+                        latest_ranks_tt_m[hp.id] = (hp, 9999)
+                    else:
+                        latest_ranks_tt_f[hp.id] = (hp, 9999)
 
         tt_players_export = []
         for gender_name, player_dict in [("M", latest_ranks_tt_m), ("F", latest_ranks_tt_f)]:

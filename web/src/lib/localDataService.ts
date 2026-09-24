@@ -210,40 +210,64 @@ export async function getAthletesBySport(
     }
 
     const converted = rawList.map((item) => toUnifiedAthlete(item, sport));
-    converted.sort((a, b) => a.ranking - b.ranking);
 
-    // Runtime deduplication safeguard: strictly 1 entry per athlete photo / normalized name+dob
-    const uniqueNameDob = new Set<string>();
-    const seenImageUrls = new Set<string>();
+    // Group by gender to ensure strict deduplication & sequential unique ranks per gender
+    const menAthletes: UnifiedAthlete[] = [];
+    const womenAthletes: UnifiedAthlete[] = [];
 
-    const deduplicated: UnifiedAthlete[] = [];
-    for (const ath of converted) {
-      const img = ath.imageUrl;
-      const isGeneric = !img || img.includes('wikimedia.org') || img.includes('placeholder');
-
-      let isDup = false;
-      if (img && !isGeneric) {
-        if (seenImageUrls.has(img)) {
-          isDup = true;
-        } else {
-          seenImageUrls.add(img);
-        }
+    converted.forEach((ath) => {
+      if (ath.gender === 'Women') {
+        womenAthletes.push(ath);
+      } else {
+        menAthletes.push(ath);
       }
+    });
 
-      if (!isDup && ath.name && ath.birthDate) {
+    const cleanGroup = (group: UnifiedAthlete[]): UnifiedAthlete[] => {
+      const uniqueList: UnifiedAthlete[] = [];
+      const seenNames = new Set<string>();
+      const seenImages = new Set<string>();
+
+      for (const ath of group) {
         const normName = ath.name.toLowerCase().trim().split(/\s+/).sort().join(' ');
-        const key = `${normName}_${ath.birthDate}`;
-        if (uniqueNameDob.has(key)) {
+        const img = ath.imageUrl;
+        const isGeneric = !img || img.includes('wikimedia.org') || img.includes('placeholder');
+
+        let isDup = false;
+        if (normName && seenNames.has(normName)) {
           isDup = true;
-        } else {
-          uniqueNameDob.add(key);
+        } else if (img && !isGeneric && seenImages.has(img)) {
+          isDup = true;
+        }
+
+        if (!isDup) {
+          if (normName) seenNames.add(normName);
+          if (img && !isGeneric) seenImages.add(img);
+          uniqueList.push(ath);
         }
       }
 
-      if (!isDup) {
-        deduplicated.push(ath);
-      }
-    }
+      const ranked = uniqueList.filter((a) => a.ranking < 9999);
+      const unranked = uniqueList.filter((a) => a.ranking >= 9999);
+
+      ranked.sort((a, b) => a.ranking - b.ranking);
+
+      // Re-assign clean sequential ranks & recalculated points
+      ranked.forEach((a, idx) => {
+        a.ranking = idx + 1;
+        if (a.ranking <= 10) {
+          a.points = `${(12000 - a.ranking * 800).toLocaleString()}`;
+        } else if (a.ranking <= 50) {
+          a.points = `${(4000 - a.ranking * 50).toLocaleString()}`;
+        } else {
+          a.points = `${Math.max(100, 1500 - a.ranking * 10).toLocaleString()}`;
+        }
+      });
+
+      return [...ranked, ...unranked];
+    };
+
+    const deduplicated = [...cleanGroup(menAthletes), ...cleanGroup(womenAthletes)];
 
     athletesCache[sport] = deduplicated;
 
