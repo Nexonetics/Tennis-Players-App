@@ -623,7 +623,7 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen>
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '#${p.ranking ?? "N/A"}',
+                    (p.ranking == null || p.ranking! >= 9999) ? 'Unranked' : '#${p.ranking}',
                     style: const TextStyle(
                       color: Colors.indigo,
                       fontWeight: FontWeight.bold,
@@ -860,17 +860,17 @@ class _PlayerCompareScreenState extends State<PlayerCompareScreen>
                   lowerIsBetter: false, isNumeric: false, highlight: true),
               _buildStatRow('Country', a.country ?? 'N/A', b.country ?? 'N/A',
                   isNumeric: false, highlight: true),
-              _buildStatRow('Current Rank', '#${a.ranking ?? "N/A"}',
-                  '#${b.ranking ?? "N/A"}',
+              _buildStatRow('Current Rank', (a.ranking == null || a.ranking! >= 9999) ? 'Unranked' : '#${a.ranking}',
+                  (b.ranking == null || b.ranking! >= 9999) ? 'Unranked' : '#${b.ranking}',
                   lowerIsBetter: true),
               _buildStatRow(
                   'Highest Rank',
-                  (a.highestRanking ?? a.careerHighRank) != null
+                  ((a.highestRanking ?? a.careerHighRank) != null && (a.highestRanking ?? a.careerHighRank)! < 9999)
                       ? '#${a.highestRanking ?? a.careerHighRank}${(a.highestRankingDate ?? a.careerHighDate) != null ? " (${DateFormat('MMM yyyy').format((a.highestRankingDate ?? a.careerHighDate)!)})" : ""}'
-                      : 'N/A',
-                  (b.highestRanking ?? b.careerHighRank) != null
+                      : 'Unranked',
+                  ((b.highestRanking ?? b.careerHighRank) != null && (b.highestRanking ?? b.careerHighRank)! < 9999)
                       ? '#${b.highestRanking ?? b.careerHighRank}${(b.highestRankingDate ?? b.careerHighDate) != null ? " (${DateFormat('MMM yyyy').format((b.highestRankingDate ?? b.careerHighDate)!)})" : ""}'
-                      : 'N/A',
+                      : 'Unranked',
                   lowerIsBetter: true),
               _buildStatRow(
                   'Prize Money', a.prizeMoney ?? 'N/A', b.prizeMoney ?? 'N/A',

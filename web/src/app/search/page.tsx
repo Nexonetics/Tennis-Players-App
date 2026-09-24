@@ -303,9 +303,15 @@ function SearchContent() {
               className="bg-white rounded-3xl p-3.5 sm:p-5 border border-slate-100 shadow-xs hover:shadow-md transition-all relative flex flex-col items-center text-center group active:scale-[0.98]"
             >
               {/* Rank Badge */}
-              <div className="absolute -top-2 -left-2 w-7 h-7 sm:w-8 sm:h-8 bg-amber-100 text-amber-800 font-bold text-[11px] sm:text-xs rounded-full flex items-center justify-center border-2 border-white shadow-xs">
-                #{player.ranking}
-              </div>
+              {player.ranking && player.ranking < 9999 ? (
+                <div className="absolute -top-2 -left-2 min-w-7 h-7 sm:min-w-8 sm:h-8 px-1.5 bg-amber-100 text-amber-800 font-bold text-[11px] sm:text-xs rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                  #{player.ranking}
+                </div>
+              ) : (
+                <div className="absolute -top-2 -left-2 px-2 h-6 sm:h-7 bg-slate-100 text-slate-500 font-bold text-[9px] sm:text-[10px] rounded-full flex items-center justify-center border-2 border-white shadow-xs">
+                  Unranked
+                </div>
+              )}
 
               {/* Avatar */}
               <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full overflow-hidden mb-2.5 sm:mb-3 shadow-sm border-2 sm:border-4 border-slate-50 shrink-0 bg-slate-100 flex items-center justify-center">

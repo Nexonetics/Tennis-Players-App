@@ -203,7 +203,9 @@ class _TtSearchScreenState extends State<TtSearchScreen> {
                                 ),
                               ),
                               Text(
-                                '#${player.ranking ?? 'N/A'}',
+                                (player.ranking == null || player.ranking! >= 9999)
+                                    ? 'Unranked'
+                                    : '#${player.ranking}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF0F9D58),

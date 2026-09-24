@@ -197,7 +197,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                 ),
                               ),
                               Text(
-                                '#${player.ranking ?? 'N/A'}',
+                                (player.ranking == null || player.ranking! >= 9999)
+                                    ? 'Unranked'
+                                    : '#${player.ranking}',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.indigo,

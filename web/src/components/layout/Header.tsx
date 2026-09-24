@@ -272,7 +272,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenDrawer }) => {
                               </span>
                             </div>
                             <span className="text-[11px] font-medium text-slate-500 truncate">
-                              {player.country} ({player.countryCode}) • Rank #{player.ranking}
+                              {player.country} ({player.countryCode}) • {player.ranking && player.ranking < 9999 ? `Rank #${player.ranking}` : 'Unranked'}
                             </span>
                           </div>
                         </div>

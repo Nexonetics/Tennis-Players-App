@@ -206,8 +206,12 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                 <Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#FA2E72]" />
                 <span>World Rank</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">#{athlete.ranking}</div>
-              <div className="text-[10px] sm:text-xs text-emerald-600 font-semibold mt-0.5">Official Standing</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">
+                {athlete.ranking && athlete.ranking < 9999 ? `#${athlete.ranking}` : 'Unranked'}
+              </div>
+              <div className="text-[10px] sm:text-xs text-emerald-600 font-semibold mt-0.5">
+                {athlete.ranking && athlete.ranking < 9999 ? 'Official Standing' : 'Currently Unranked'}
+              </div>
             </div>
 
             <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm flex flex-col gap-1">
@@ -215,7 +219,9 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                 <Medal className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />
                 <span>Career High</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">#{athlete.careerHighRank}</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">
+                {athlete.careerHighRank && athlete.careerHighRank < 9999 ? `#${athlete.careerHighRank}` : 'Unranked'}
+              </div>
               <div className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 truncate">
                 {athlete.careerHighDate ? `Achieved ${athlete.careerHighDate}` : 'Best Rank'}
               </div>

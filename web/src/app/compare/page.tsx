@@ -277,7 +277,7 @@ function ComparePageContent() {
                     {playerA?.name || 'Select Player A'}
                   </div>
                   <div className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
-                    {playerA ? `${playerA.country} • Rank #${playerA.ranking}` : 'Tap to search'}
+                    {playerA ? `${playerA.country} • ${playerA.ranking && playerA.ranking < 9999 ? `Rank #${playerA.ranking}` : 'Unranked'}` : 'Tap to search'}
                   </div>
                 </div>
                 <button className="text-xs text-[#FA2E72] font-bold shrink-0">Change</button>
@@ -305,7 +305,7 @@ function ComparePageContent() {
                     {playerB?.name || 'Select Player B'}
                   </div>
                   <div className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
-                    {playerB ? `${playerB.country} • Rank #${playerB.ranking}` : 'Tap to search'}
+                    {playerB ? `${playerB.country} • ${playerB.ranking && playerB.ranking < 9999 ? `Rank #${playerB.ranking}` : 'Unranked'}` : 'Tap to search'}
                   </div>
                 </div>
                 <button className="text-xs text-indigo-600 font-bold shrink-0">Change</button>
@@ -392,9 +392,13 @@ function ComparePageContent() {
                 )}
 
                 <div className="flex justify-between items-center py-2.5 sm:py-3 border-b border-slate-100 px-2 sm:px-4 bg-pink-50/50 rounded-lg my-1">
-                  <div className="w-1/3 text-left font-bold text-[#FA2E72]">#{playerA.ranking}</div>
+                  <div className="w-1/3 text-left font-bold text-[#FA2E72]">
+                    {playerA.ranking && playerA.ranking < 9999 ? `#${playerA.ranking}` : 'Unranked'}
+                  </div>
                   <div className="w-1/3 text-center text-[11px] sm:text-xs font-semibold text-[#14b8a6]">Current Rank</div>
-                  <div className="w-1/3 text-right font-bold text-indigo-600">#{playerB.ranking}</div>
+                  <div className="w-1/3 text-right font-bold text-indigo-600">
+                    {playerB.ranking && playerB.ranking < 9999 ? `#${playerB.ranking}` : 'Unranked'}
+                  </div>
                 </div>
 
                 <div className="flex justify-between items-center py-2.5 sm:py-3 border-b border-slate-100 px-2 sm:px-4">

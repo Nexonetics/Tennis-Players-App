@@ -403,9 +403,11 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
   Widget _buildStatGrid(BuildContext context, Player player) {
     final rankDate = player.highestRankingDate ?? player.careerHighDate;
     final rankVal = player.highestRanking ?? player.careerHighRank;
-    final highestRankLabel = rankDate != null
-        ? '#${rankVal ?? 'N/A'} (${DateFormat('MMM yyyy').format(rankDate)})'
-        : '#${rankVal ?? 'N/A'}';
+    final highestRankLabel = (rankVal != null && rankVal < 9999)
+        ? (rankDate != null
+            ? '#$rankVal (${DateFormat('MMM yyyy').format(rankDate)})'
+            : '#$rankVal')
+        : 'Unranked';
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -418,7 +420,7 @@ class _PlayerDetailScreenState extends State<PlayerDetailScreen> {
             _buildStatCard(
               cardWidth,
               'Current Rank',
-              '#${player.ranking ?? 'N/A'}',
+              (player.ranking == null || player.ranking! >= 9999) ? 'Unranked' : '#${player.ranking}',
               Icons.military_tech,
             ),
             _buildStatCard(
