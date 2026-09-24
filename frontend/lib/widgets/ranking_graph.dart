@@ -93,7 +93,7 @@ class _GraphPainter extends CustomPainter {
       canvas.drawCircle(Offset(x, y), 3, dotPaint);
 
       textPainter.text = TextSpan(
-        text: '#${points[0].ranking}',
+        text: points[0].ranking >= 9999 ? 'Unranked' : '#${points[0].ranking}',
         style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       );
       textPainter.layout();
@@ -166,7 +166,7 @@ class _GraphPainter extends CustomPainter {
       canvas.drawCircle(Offset(x, y), 3, dotPaint);
 
       textPainter.text = TextSpan(
-        text: '#${points[i].ranking}',
+        text: points[i].ranking >= 9999 ? 'Unranked' : '#${points[i].ranking}',
         style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       );
       textPainter.layout();
@@ -190,7 +190,7 @@ class _GraphPainter extends CustomPainter {
       canvas.drawCircle(Offset(x, y), 3, dotPaint);
 
       textPainter.text = TextSpan(
-        text: '#${points[i].ranking}',
+        text: points[i].ranking >= 9999 ? 'Unranked' : '#${points[i].ranking}',
         style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold),
       );
       textPainter.layout();
@@ -398,7 +398,7 @@ class _ComparisonGraphPainter extends CustomPainter {
         textAlign: TextAlign.center,
       );
       textPainter.text = TextSpan(
-        text: '#${points[0].ranking}',
+        text: points[0].ranking >= 9999 ? 'Unranked' : '#${points[0].ranking}',
         style: TextStyle(
           color: color,
           fontSize: 8.5,
@@ -444,7 +444,7 @@ class _ComparisonGraphPainter extends CustomPainter {
         textAlign: TextAlign.center,
       );
       textPainter.text = TextSpan(
-        text: '#${points[i].ranking}',
+        text: points[i].ranking >= 9999 ? 'Unranked' : '#${points[i].ranking}',
         style: TextStyle(
           color: color,
           fontSize: 8.5,
@@ -466,7 +466,7 @@ class _ComparisonGraphPainter extends CustomPainter {
         textAlign: TextAlign.center,
       );
       textPainter.text = TextSpan(
-        text: '#${points[lastIdx].ranking}',
+        text: points[lastIdx].ranking >= 9999 ? 'Unranked' : '#${points[lastIdx].ranking}',
         style: TextStyle(
           color: color,
           fontSize: 8.5,

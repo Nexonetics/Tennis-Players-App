@@ -227,7 +227,7 @@ function RankingsContent() {
                     player.ranking === 3 ? 'bg-amber-700/10 text-amber-900 border border-amber-600/30' :
                     'bg-slate-100 text-slate-700'}`}
                 >
-                  #{player.ranking}
+                  {player.ranking && player.ranking < 9999 ? `#${player.ranking}` : 'UR'}
                 </div>
                 
                 {/* Avatar / Photo */}

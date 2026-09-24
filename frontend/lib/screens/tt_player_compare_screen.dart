@@ -633,7 +633,7 @@ class _TtPlayerCompareScreenState extends State<TtPlayerCompareScreen>
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '#${p.ranking ?? "N/A"}',
+                    (p.ranking == null || p.ranking! >= 9999) ? 'Unranked' : '#${p.ranking}',
                     style: const TextStyle(
                       color: _kGreen,
                       fontWeight: FontWeight.bold,
@@ -874,16 +874,16 @@ class _TtPlayerCompareScreenState extends State<TtPlayerCompareScreen>
               _buildStatRow('Country', a.country ?? 'N/A', b.country ?? 'N/A',
                   isNumeric: false, highlight: true),
               _buildStatRow('Win %', _winRate(a), _winRate(b)),
-              _buildStatRow('Current Rank', '#${a.ranking ?? "N/A"}',
-                  '#${b.ranking ?? "N/A"}',
+              _buildStatRow('Current Rank', (a.ranking == null || a.ranking! >= 9999) ? 'Unranked' : '#${a.ranking}',
+                  (b.ranking == null || b.ranking! >= 9999) ? 'Unranked' : '#${b.ranking}',
                   lowerIsBetter: true),
               _buildStatRow('Career High Rank',
-                  a.careerHighRank != null
+                  (a.careerHighRank != null && a.careerHighRank! < 9999)
                       ? '#${a.careerHighRank}${a.careerHighDate != null ? " (${DateFormat('MMM yyyy').format(a.careerHighDate!)})" : ""}'
-                      : 'N/A',
-                  b.careerHighRank != null
+                      : 'Unranked',
+                  (b.careerHighRank != null && b.careerHighRank! < 9999)
                       ? '#${b.careerHighRank}${b.careerHighDate != null ? " (${DateFormat('MMM yyyy').format(b.careerHighDate!)})" : ""}'
-                      : 'N/A',
+                      : 'Unranked',
                   lowerIsBetter: true),
             ],
           ),

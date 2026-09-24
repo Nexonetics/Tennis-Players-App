@@ -536,13 +536,13 @@ class _TtPlayerDetailScreenState extends State<TtPlayerDetailScreen> {
             _buildStatCard(
               cardWidth,
               'Current Rank',
-              '#${player.ranking ?? 'N/A'}',
+              (player.ranking == null || player.ranking! >= 9999) ? 'Unranked' : '#${player.ranking}',
               Icons.military_tech,
             ),
             _buildStatCard(
               cardWidth,
               'Career High Rank',
-              player.careerHighRank != null ? '#${player.careerHighRank}$chDateStr' : 'N/A',
+              (player.careerHighRank != null && player.careerHighRank! < 9999) ? '#${player.careerHighRank}$chDateStr' : 'Unranked',
               Icons.trending_up_rounded,
             ),
             _buildStatCard(
