@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { UnifiedAthlete } from '@/types';
@@ -41,6 +41,7 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
 
 function RankingsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const sportParam = searchParams.get('sport');
 
   const [activeSport, setActiveSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>(
@@ -56,10 +57,18 @@ function RankingsContent() {
 
   useEffect(() => {
     const s = searchParams.get('sport');
-    if (s && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(s) && s !== activeSport) {
+    if (s && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(s)) {
       setActiveSport(s as any);
     }
-  }, [searchParams, activeSport]);
+  }, [searchParams]);
+
+  const handleSportChange = (sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball') => {
+    setActiveSport(sport);
+    setPage(1);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('sport', sport);
+    router.replace(`/rankings?${params.toString()}`, { scroll: false });
+  };
 
 
   useEffect(() => {
@@ -154,10 +163,7 @@ function RankingsContent() {
         {(['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const).map(sport => (
           <button
             key={sport}
-            onClick={() => {
-              setActiveSport(sport);
-              setPage(1);
-            }}
+            onClick={() => handleSportChange(sport)}
             className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold transition-all shadow-xs flex items-center gap-1.5 sm:gap-2 whitespace-nowrap border cursor-pointer active:scale-95
               ${activeSport === sport 
                 ? 'bg-[#FA2E72] text-white border-transparent shadow-md' 
