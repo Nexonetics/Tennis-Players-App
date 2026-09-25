@@ -648,22 +648,22 @@
     "last_updated": "2026-09-15T11:20:33"
   },
   {
-    "id": 14451,
+    "id": 54,
     "name": "Benedikt DUDA",
     "country": "Germany",
     "ranking": 37,
-    "highest_ranking": 37,
-    "highest_ranking_date": "2026-09-22",
-    "career_high_rank": 37,
-    "career_high_date": "2026-09-22",
-    "birth_date": null,
+    "highest_ranking": 8,
+    "highest_ranking_date": "2025-09-02",
+    "career_high_rank": 8,
+    "career_high_date": "2025-09-02",
+    "birth_date": "1994-04-04",
     "weight": null,
-    "playing_style": "Right-handed attacker",
-    "win_percentage": 0.0,
+    "playing_style": null,
+    "win_percentage": null,
     "image_url": "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/116620_Headshot_R_Benedikt DUDA.png",
     "source": "WTT Official",
     "gender": "M",
-    "last_updated": null
+    "last_updated": "2026-09-25T04:54:13"
   },
   {
     "id": 14452,
@@ -23416,24 +23416,6 @@
     "source": "WTT Official",
     "gender": "M",
     "last_updated": "2026-05-18T06:25:54.544351+00:00"
-  },
-  {
-    "id": 54,
-    "name": "Duda Benedikt",
-    "country": "Germany",
-    "ranking": 9999,
-    "highest_ranking": 8,
-    "highest_ranking_date": "2025-09-02",
-    "career_high_rank": 8,
-    "career_high_date": "2025-09-02",
-    "birth_date": "1994-04-04",
-    "weight": null,
-    "playing_style": "Unknown",
-    "win_percentage": null,
-    "image_url": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/20220814_European_Championships_Munich_2022_Benedikt_Duda_850_3615.jpg/330px-20220814_European_Championships_Munich_2022_Benedikt_Duda_850_3615.jpg",
-    "source": "WTT Official",
-    "gender": "M",
-    "last_updated": "2026-05-18T06:26:03.305972+00:00"
   },
   {
     "id": 56,
@@ -131202,6 +131184,24 @@
     "last_updated": null
   },
   {
+    "id": 14373,
+    "name": "Lee Daeun",
+    "country": "Korea Republic",
+    "ranking": 163,
+    "highest_ranking": 163,
+    "highest_ranking_date": "2026-09-15",
+    "career_high_rank": 163,
+    "career_high_date": "2026-09-15",
+    "birth_date": "2005-01-01",
+    "weight": null,
+    "playing_style": null,
+    "win_percentage": null,
+    "image_url": "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/135391_HEADSHOT_R_LEE_Daeun.png",
+    "source": "WTT Official",
+    "gender": "F",
+    "last_updated": "2026-09-22T10:42:20"
+  },
+  {
     "id": 12768,
     "name": "KIM Kum Yong",
     "country": "Korea DPR",
@@ -145764,22 +145764,22 @@
     "last_updated": null
   },
   {
-    "id": 2896,
+    "id": 3341,
     "name": "Lee Daeun",
     "country": "Korea Republic",
     "ranking": 977,
-    "highest_ranking": 233,
-    "highest_ranking_date": "2026-09-15",
-    "career_high_rank": 233,
-    "career_high_date": "2026-09-15",
-    "birth_date": "2003-01-01",
+    "highest_ranking": 88,
+    "highest_ranking_date": "2025-08-26",
+    "career_high_rank": 88,
+    "career_high_date": "2025-08-26",
+    "birth_date": "2003-12-30",
     "weight": null,
-    "playing_style": "Right-handed attacker",
-    "win_percentage": 0.0,
+    "playing_style": null,
+    "win_percentage": null,
     "image_url": "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/132702_HEADSHOT_R_LEE_Daeun.png",
     "source": "WTT Official",
     "gender": "F",
-    "last_updated": "2026-09-22T10:42:20"
+    "last_updated": "2026-09-25T04:33:39"
   },
   {
     "id": 14395,
@@ -166282,24 +166282,6 @@
     "source": "WTT Official",
     "gender": "F",
     "last_updated": "2026-05-26T07:03:36.927844+00:00"
-  },
-  {
-    "id": 3341,
-    "name": "Lee Daeun",
-    "country": "Korea Republic",
-    "ranking": 9999,
-    "highest_ranking": 88,
-    "highest_ranking_date": "2025-08-26",
-    "career_high_rank": 88,
-    "career_high_date": "2025-08-26",
-    "birth_date": "2002-12-30",
-    "weight": null,
-    "playing_style": "Right-handed attacker",
-    "win_percentage": 0.0,
-    "image_url": "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/132702_HEADSHOT_R_LEE_Daeun.png",
-    "source": "WTT Official",
-    "gender": "F",
-    "last_updated": "2026-09-15T11:20:59"
   },
   {
     "id": 3342,
@@ -225016,23 +224998,5 @@
     "source": "WTT Official",
     "gender": "F",
     "last_updated": "2026-09-14T09:40:26"
-  },
-  {
-    "id": 14373,
-    "name": "Lee Daeun",
-    "country": "Korea Republic",
-    "ranking": 9999,
-    "highest_ranking": 163,
-    "highest_ranking_date": "2026-09-15",
-    "career_high_rank": 163,
-    "career_high_date": "2026-09-15",
-    "birth_date": "2005-01-01",
-    "weight": null,
-    "playing_style": "Right-handed attacker",
-    "win_percentage": 0.0,
-    "image_url": "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/135391_HEADSHOT_R_LEE_Daeun.png",
-    "source": "WTT Official",
-    "gender": "F",
-    "last_updated": "2026-09-22T10:42:20"
   }
 ]
