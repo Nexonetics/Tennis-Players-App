@@ -62,7 +62,8 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
           : 'Tennis') as 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball';
         const foundAthlete = await getAthleteById(effectiveId, sport);
         if (foundAthlete) {
-          const foundHistory = await getAthleteHistory(effectiveId, foundAthlete.sport);
+          const canonicalId = String(foundAthlete.id);
+          const foundHistory = await getAthleteHistory(canonicalId, foundAthlete.sport);
           setAthlete(foundAthlete);
           setHistory(foundHistory);
         } else {
