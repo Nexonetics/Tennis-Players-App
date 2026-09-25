@@ -225,23 +225,22 @@ export async function getAthletesBySport(
 
     const cleanGroup = (group: UnifiedAthlete[]): UnifiedAthlete[] => {
       const uniqueList: UnifiedAthlete[] = [];
-      const seenNames = new Set<string>();
+      const seenIds = new Set<string>();
       const seenImages = new Set<string>();
 
       for (const ath of group) {
-        const normName = ath.name.toLowerCase().trim().split(/\s+/).sort().join(' ');
         const img = ath.imageUrl;
-        const isGeneric = !img || img.includes('wikimedia.org') || img.includes('placeholder');
+        const isGeneric = !img || img.includes('wikimedia.org') || img.includes('placeholder') || img.includes('default');
 
         let isDup = false;
-        if (normName && seenNames.has(normName)) {
+        if (ath.id && seenIds.has(ath.id)) {
           isDup = true;
         } else if (img && !isGeneric && seenImages.has(img)) {
           isDup = true;
         }
 
         if (!isDup) {
-          if (normName) seenNames.add(normName);
+          if (ath.id) seenIds.add(ath.id);
           if (img && !isGeneric) seenImages.add(img);
           uniqueList.push(ath);
         }
@@ -454,12 +453,25 @@ export async function searchAllAthletes(
 }
 
 
+const MERGED_ID_MAP: Record<string, string> = {
+  '14451': '54',    // Benedikt DUDA (merged into primary ID 54)
+  '2896': '3341',   // Lee Daeun (merged into primary ID 3341)
+};
+
 export async function getAthleteById(
   id: string,
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball' = 'Tennis'
 ): Promise<UnifiedAthlete | null> {
-  const targetId = String(id);
-  const cleanId = targetId.replace(/^(b_nat_|b_club_|nat_|club_)/, '');
+  let targetId = String(id);
+  let cleanId = targetId.replace(/^(b_nat_|b_club_|nat_|club_)/, '');
+
+  if (MERGED_ID_MAP[cleanId]) {
+    cleanId = MERGED_ID_MAP[cleanId];
+    targetId = cleanId;
+  } else if (MERGED_ID_MAP[targetId]) {
+    targetId = MERGED_ID_MAP[targetId];
+    cleanId = targetId;
+  }
 
   // 1. Check O(1) indexed lookup map
   if (athleteIdMap[`${sport}_${targetId}`]) return athleteIdMap[`${sport}_${targetId}`];
@@ -504,7 +516,9 @@ export async function getAthleteHistory(
   else if (sport === 'Football') primaryFilename = 'football_team_histories.json';
   else if (sport === 'Basketball') primaryFilename = 'basketball_team_histories.json';
 
-  const cleanId = String(id).replace(/^(b_nat_|b_club_|nat_|club_)/, '');
+  let cleanId = String(id).replace(/^(b_nat_|b_club_|nat_|club_)/, '');
+  if (MERGED_ID_MAP[cleanId]) cleanId = MERGED_ID_MAP[cleanId];
+  if (MERGED_ID_MAP[String(id)]) cleanId = MERGED_ID_MAP[String(id)];
 
   if (!historyFileCache[primaryFilename]) {
     historyFileCache[primaryFilename] = await getJsonData<Record<string, HistoryPoint[]>>(primaryFilename);

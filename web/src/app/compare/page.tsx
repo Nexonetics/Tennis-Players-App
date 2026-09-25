@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeftRight, X, Search, Loader2 } from 'lucide-react';
 import { UnifiedAthlete, HistoryPoint } from '@/types';
+import { searchAthletes, getAthleteById, getAthleteHistory } from '@/lib/localDataService';
 
 // Safe Athlete Image component with onError fallback
 const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
@@ -19,7 +20,7 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
 
   if (!src || hasError) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-600 text-white font-bold text-xl flex items-center justify-center">
+      <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-600 text-white font-bold text-lg sm:text-xl flex items-center justify-center">
         {fallbackLetter}
       </div>
     );
@@ -36,6 +37,22 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
     />
   );
 };
+
+function formatCareerHighDate(dateStr?: string): string {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  }
+  const parts = dateStr.split(/[-/]/);
+  if (parts.length >= 2 && parts[0].length === 4) {
+    const year = parts[0];
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (months[monthIdx]) return `${months[monthIdx]} ${year}`;
+  }
+  return dateStr;
+}
 
 function ComparePageContent() {
   const searchParams = useSearchParams();
@@ -59,25 +76,19 @@ function ComparePageContent() {
   useEffect(() => {
     async function loadDefaults() {
       try {
-        const res = await fetch(`/api/players?sport=${encodeURIComponent(sport)}&pageSize=5`);
-        if (res.ok) {
-          const data = await res.json();
-          const items: UnifiedAthlete[] = data.items || [];
-          if (items.length >= 2) {
-            let pA = items[0];
-            let pB = items[1];
+        const data = await searchAthletes({ sport, pageSize: 5 });
+        const items: UnifiedAthlete[] = data.items || [];
+        if (items.length >= 2) {
+          let pA = items[0];
+          let pB = items[1];
 
-            if (initialPlayer1) {
-              const resA = await fetch(`/api/players/${initialPlayer1}?sport=${encodeURIComponent(sport)}`);
-              if (resA.ok) {
-                const dataA = await resA.json();
-                if (dataA.athlete) pA = dataA.athlete;
-              }
-            }
-
-            setPlayerA(pA);
-            setPlayerB(pB);
+          if (initialPlayer1) {
+            const foundA = await getAthleteById(initialPlayer1, sport);
+            if (foundA) pA = foundA;
           }
+
+          setPlayerA(pA);
+          setPlayerB(pB);
         }
       } catch (err) {
         console.error('Failed loading default players for compare', err);
@@ -91,22 +102,16 @@ function ComparePageContent() {
     async function fetchHistories() {
       if (playerA) {
         try {
-          const res = await fetch(`/api/players/${playerA.id}?sport=${encodeURIComponent(sport)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setHistoryA(data.history || []);
-          }
+          const hA = await getAthleteHistory(playerA.id, playerA.sport);
+          setHistoryA(hA || []);
         } catch (e) {
           console.error(e);
         }
       }
       if (playerB) {
         try {
-          const res = await fetch(`/api/players/${playerB.id}?sport=${encodeURIComponent(sport)}`);
-          if (res.ok) {
-            const data = await res.json();
-            setHistoryB(data.history || []);
-          }
+          const hB = await getAthleteHistory(playerB.id, playerB.sport);
+          setHistoryB(hB || []);
         } catch (e) {
           console.error(e);
         }
@@ -120,11 +125,8 @@ function ComparePageContent() {
     if (!searchQuery.trim()) return;
     setSearching(true);
     try {
-      const res = await fetch(`/api/players?sport=${encodeURIComponent(sport)}&query=${encodeURIComponent(searchQuery)}&pageSize=10`);
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data.items || []);
-      }
+      const data = await searchAthletes({ sport, query: searchQuery, pageSize: 10 });
+      setSearchResults(data.items || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -190,9 +192,9 @@ function ComparePageContent() {
   const pathB = pointsB.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
 
   return (
-    <div className="flex flex-col gap-6 w-full max-w-6xl mx-auto pb-12">
+    <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-6xl mx-auto pb-12">
       {/* Hero Banner */}
-      <div className="w-full h-44 rounded-3xl overflow-hidden relative shadow-sm border border-blue-900 bg-[#0A2342] flex items-center px-10">
+      <div className="w-full min-h-[140px] sm:h-44 rounded-3xl overflow-hidden relative shadow-sm border border-blue-900 bg-[#0A2342] flex items-center px-5 sm:px-10 py-5">
         <div className="absolute inset-0 z-0">
           <Image
             src="https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=2000&auto=format&fit=crop"
@@ -202,29 +204,29 @@ function ComparePageContent() {
             className="object-cover opacity-30 mix-blend-overlay"
           />
         </div>
-        <div className="relative z-10 flex items-center gap-6">
-          <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-md text-white">
-            <ArrowLeftRight className="w-8 h-8" />
+        <div className="relative z-10 flex items-center gap-4 sm:gap-6">
+          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-md text-white shrink-0">
+            <ArrowLeftRight className="w-6 h-6 sm:w-8 sm:h-8" />
           </div>
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-[10px] font-bold uppercase tracking-widest mb-2 border border-white/10">
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-[9px] sm:text-[10px] font-bold uppercase tracking-widest mb-1.5 border border-white/10">
               {getSportEmoji(sport)} {sport} Comparison
             </div>
-            <h1 className="text-4xl font-extrabold text-white mb-2 tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-1 tracking-tight">
               Compare <span className="text-[#FA2E72]">Athletes</span>
             </h1>
-            <p className="text-blue-100 text-sm font-medium max-w-lg">Analyze and compare rankings, points, win rates, and historical timelines side-by-side.</p>
+            <p className="text-blue-100 text-xs sm:text-sm font-medium max-w-lg">Analyze and compare rankings, points, win rates, and historical timelines side-by-side.</p>
           </div>
         </div>
       </div>
 
       {/* Sport Selector */}
-      <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 sm:gap-3 overflow-x-auto pb-1 scrollbar-hide">
         {(['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const).map((s) => (
           <button
             key={s}
             onClick={() => setSport(s)}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all border flex items-center gap-2 cursor-pointer whitespace-nowrap
+            className={`px-4 sm:px-5 py-2 rounded-full text-xs font-bold transition-all border flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap active:scale-95
               ${sport === s ? 'bg-[#FA2E72] text-white border-transparent shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'}`}
           >
             <span>{getSportEmoji(s)}</span>
@@ -233,34 +235,34 @@ function ComparePageContent() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
         {/* Left Info Panel */}
         <div className="lg:col-span-3 flex flex-col gap-4">
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-5">
-            <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800 mb-1">
-              <span className="text-lg">👤</span> Athlete Comparison
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-100 shadow-xs flex flex-col gap-4 sm:gap-5">
+            <h3 className="flex items-center gap-2 text-base sm:text-lg font-bold text-slate-800 mb-0.5">
+              <span>👤</span> Athlete Comparison
             </h3>
 
-            <div className="flex flex-col gap-4 text-xs font-medium text-slate-600">
+            <div className="flex flex-col gap-3 sm:gap-4 text-xs font-medium text-slate-600">
               <p>Select any two athletes from the cached dataset to compare their profile stats and ranking history timelines.</p>
               <div className="p-3 bg-pink-50 rounded-2xl border border-pink-100 text-[#FA2E72] font-semibold text-xs">
-                💡 Tip: Click on any athlete card above to change the selected player.
+                💡 Tip: Tap on any player card below to swap athletes.
               </div>
             </div>
           </div>
         </div>
 
         {/* Right Main Content */}
-        <div className="lg:col-span-9 flex flex-col gap-6">
+        <div className="lg:col-span-9 flex flex-col gap-5 sm:gap-6">
           {/* Player Selectors */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-4">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-xs flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
               {/* Selector A */}
               <div
                 onClick={() => setSearchModalOpen('A')}
-                className="w-full sm:w-1/2 border border-slate-200 hover:border-[#FA2E72] rounded-full p-2 pl-4 pr-6 flex items-center gap-4 transition-all shadow-xs bg-slate-50/50 cursor-pointer group"
+                className="w-full sm:w-1/2 border border-slate-200 hover:border-[#FA2E72] rounded-2xl sm:rounded-full p-2.5 pl-3.5 pr-4 flex items-center gap-3 transition-all shadow-xs bg-slate-50/50 cursor-pointer group active:scale-[0.99]"
               >
-                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200 flex items-center justify-center">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200 flex items-center justify-center">
                   <AthleteImage
                     src={playerA?.imageUrl}
                     alt={playerA?.name || 'A'}
@@ -270,25 +272,25 @@ function ComparePageContent() {
                     fallbackLetter={playerA?.name.charAt(0) || 'A'}
                   />
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <div className="font-bold text-slate-900 truncate group-hover:text-[#FA2E72] transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-slate-900 text-xs sm:text-sm truncate group-hover:text-[#FA2E72] transition-colors">
                     {playerA?.name || 'Select Player A'}
                   </div>
-                  <div className="text-xs font-semibold text-slate-500 truncate">
-                    {playerA ? `${playerA.country} • Rank #${playerA.ranking}` : 'Click to search'}
+                  <div className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
+                    {playerA ? `${playerA.country} • ${playerA.ranking && playerA.ranking < 9999 ? `Rank #${playerA.ranking}` : 'Unranked'}` : 'Tap to search'}
                   </div>
                 </div>
-                <button className="text-xs text-[#FA2E72] font-bold">Change</button>
+                <button className="text-xs text-[#FA2E72] font-bold shrink-0">Change</button>
               </div>
 
-              <div className="text-slate-300 font-extrabold text-xl px-2">VS</div>
+              <div className="text-slate-300 font-extrabold text-sm sm:text-xl px-2 my-[-4px] sm:my-0">VS</div>
 
               {/* Selector B */}
               <div
                 onClick={() => setSearchModalOpen('B')}
-                className="w-full sm:w-1/2 border border-slate-200 hover:border-indigo-600 rounded-full p-2 pl-4 pr-6 flex items-center gap-4 transition-all shadow-xs bg-slate-50/50 cursor-pointer group"
+                className="w-full sm:w-1/2 border border-slate-200 hover:border-indigo-600 rounded-2xl sm:rounded-full p-2.5 pl-3.5 pr-4 flex items-center gap-3 transition-all shadow-xs bg-slate-50/50 cursor-pointer group active:scale-[0.99]"
               >
-                <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200 flex items-center justify-center">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xs bg-slate-200 flex items-center justify-center">
                   <AthleteImage
                     src={playerB?.imageUrl}
                     alt={playerB?.name || 'B'}
@@ -298,30 +300,30 @@ function ComparePageContent() {
                     fallbackLetter={playerB?.name.charAt(0) || 'B'}
                   />
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <div className="font-bold text-slate-900 truncate group-hover:text-indigo-600 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-slate-900 text-xs sm:text-sm truncate group-hover:text-indigo-600 transition-colors">
                     {playerB?.name || 'Select Player B'}
                   </div>
-                  <div className="text-xs font-semibold text-slate-500 truncate">
-                    {playerB ? `${playerB.country} • Rank #${playerB.ranking}` : 'Click to search'}
+                  <div className="text-[11px] sm:text-xs font-semibold text-slate-500 truncate">
+                    {playerB ? `${playerB.country} • ${playerB.ranking && playerB.ranking < 9999 ? `Rank #${playerB.ranking}` : 'Unranked'}` : 'Tap to search'}
                   </div>
                 </div>
-                <button className="text-xs text-indigo-600 font-bold">Change</button>
+                <button className="text-xs text-indigo-600 font-bold shrink-0">Change</button>
               </div>
             </div>
           </div>
 
           {/* Comparison Stats Section */}
           {playerA && playerB && (
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-xs flex flex-col gap-6">
-              <h3 className="flex items-center gap-2 text-lg font-bold text-slate-800">
+            <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-xs flex flex-col gap-5 sm:gap-6">
+              <h3 className="flex items-center gap-2 text-base sm:text-lg font-bold text-slate-800">
                 <span>📈</span> Player Head-to-Head Comparison
               </h3>
 
               {/* Headers */}
-              <div className="flex items-center justify-between px-2 sm:px-6">
-                <div className="flex items-center gap-3 w-5/12">
-                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-xs shrink-0 bg-slate-200 flex items-center justify-center">
+              <div className="flex items-center justify-between px-1 sm:px-6">
+                <div className="flex items-center gap-2 sm:gap-3 w-5/12 min-w-0">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white shadow-xs shrink-0 bg-slate-200 flex items-center justify-center">
                     <AthleteImage
                       src={playerA.imageUrl}
                       alt="A"
@@ -331,20 +333,20 @@ function ComparePageContent() {
                       fallbackLetter={playerA.name.charAt(0)}
                     />
                   </div>
-                  <div className="overflow-hidden">
-                    <div className="font-bold text-slate-900 text-sm truncate">{playerA.name}</div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 text-xs sm:text-sm truncate">{playerA.name}</div>
                     <div className="text-[10px] font-semibold text-slate-500 truncate">{playerA.country}</div>
                   </div>
                 </div>
 
-                <div className="text-slate-300 font-bold text-xs">VS</div>
+                <div className="text-slate-300 font-bold text-xs shrink-0 px-1">VS</div>
 
-                <div className="flex items-center gap-3 justify-end w-5/12 text-right">
-                  <div className="overflow-hidden">
-                    <div className="font-bold text-slate-900 text-sm truncate">{playerB.name}</div>
+                <div className="flex items-center gap-2 sm:gap-3 justify-end w-5/12 text-right min-w-0">
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-900 text-xs sm:text-sm truncate">{playerB.name}</div>
                     <div className="text-[10px] font-semibold text-slate-500 truncate">{playerB.country}</div>
                   </div>
-                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-xs shrink-0 bg-slate-200 flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white shadow-xs shrink-0 bg-slate-200 flex items-center justify-center">
                     <AthleteImage
                       src={playerB.imageUrl}
                       alt="B"
@@ -358,69 +360,87 @@ function ComparePageContent() {
               </div>
 
               {/* Stats Table */}
-              <div className="flex flex-col text-sm">
-                <div className="bg-slate-50 rounded-xl px-4 py-2 mb-2 text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <div className="flex flex-col text-xs sm:text-sm">
+                <div className="bg-slate-50 rounded-xl px-3 sm:px-4 py-2 mb-2 text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Summary Statistics
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                  <div className="w-1/3 text-left font-bold text-slate-800">{playerA.age ? `${playerA.age} Yrs` : 'N/A'}</div>
-                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Age</div>
-                  <div className="w-1/3 text-right font-bold text-slate-800">{playerB.age ? `${playerB.age} Yrs` : 'N/A'}</div>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                  <div className="w-1/3 text-left font-bold text-slate-800">{playerA.country}</div>
-                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Country</div>
-                  <div className="w-1/3 text-right font-bold text-slate-800">{playerB.country}</div>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
-                  <div className="w-1/3 text-left font-bold text-slate-800">
-                    {playerA.winRate !== undefined ? `${playerA.winRate}%` : 'N/A'}
+                {sport !== 'Football' && sport !== 'Basketball' && (
+                  <div className="flex justify-between items-center py-2.5 sm:py-3 border-b border-slate-100 px-2 sm:px-4">
+                    <div className="w-1/3 text-left font-bold text-slate-800">{playerA.age ? `${playerA.age} Yrs` : 'N/A'}</div>
+                    <div className="w-1/3 text-center text-[11px] sm:text-xs font-semibold text-[#14b8a6]">Age</div>
+                    <div className="w-1/3 text-right font-bold text-slate-800">{playerB.age ? `${playerB.age} Yrs` : 'N/A'}</div>
                   </div>
-                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Win %</div>
-                  <div className="w-1/3 text-right font-bold text-slate-800">
-                    {playerB.winRate !== undefined ? `${playerB.winRate}%` : 'N/A'}
+                )}
+
+                <div className="flex justify-between items-center py-2.5 sm:py-3 border-b border-slate-100 px-2 sm:px-4">
+                  <div className="w-1/3 text-left font-bold text-slate-800 truncate pr-1">{playerA.country}</div>
+                  <div className="w-1/3 text-center text-[11px] sm:text-xs font-semibold text-[#14b8a6]">Country</div>
+                  <div className="w-1/3 text-right font-bold text-slate-800 truncate pl-1">{playerB.country}</div>
+                </div>
+
+                {sport !== 'Football' && sport !== 'Basketball' && (playerA.winRate !== undefined || playerB.winRate !== undefined) && (
+                  <div className="flex justify-between items-center py-2.5 sm:py-3 border-b border-slate-100 px-2 sm:px-4">
+                    <div className="w-1/3 text-left font-bold text-slate-800">
+                      {playerA.winRate !== undefined ? `${playerA.winRate}%` : 'N/A'}
+                    </div>
+                    <div className="w-1/3 text-center text-[11px] sm:text-xs font-semibold text-[#14b8a6]">Win %</div>
+                    <div className="w-1/3 text-right font-bold text-slate-800">
+                      {playerB.winRate !== undefined ? `${playerB.winRate}%` : 'N/A'}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center py-2.5 sm:py-3 border-b border-slate-100 px-2 sm:px-4 bg-pink-50/50 rounded-lg my-1">
+                  <div className="w-1/3 text-left font-bold text-[#FA2E72]">
+                    {playerA.ranking && playerA.ranking < 9999 ? `#${playerA.ranking}` : 'Unranked'}
+                  </div>
+                  <div className="w-1/3 text-center text-[11px] sm:text-xs font-semibold text-[#14b8a6]">Current Rank</div>
+                  <div className="w-1/3 text-right font-bold text-indigo-600">
+                    {playerB.ranking && playerB.ranking < 9999 ? `#${playerB.ranking}` : 'Unranked'}
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4 bg-pink-50/50 rounded-lg my-1">
-                  <div className="w-1/3 text-left font-bold text-[#FA2E72]">#{playerA.ranking}</div>
-                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Current Rank</div>
-                  <div className="w-1/3 text-right font-bold text-indigo-600">#{playerB.ranking}</div>
-                </div>
-
-                <div className="flex justify-between items-center py-3 border-b border-slate-100 px-4">
+                <div className="flex justify-between items-center py-2.5 sm:py-3 border-b border-slate-100 px-2 sm:px-4">
                   <div className="w-1/3 text-left font-bold text-[#FA2E72]">
                     #{playerA.careerHighRank || playerA.ranking}
+                    {playerA.careerHighDate && (
+                      <span className="hidden sm:inline text-xs font-normal text-slate-500 ml-1">
+                        ({formatCareerHighDate(playerA.careerHighDate)})
+                      </span>
+                    )}
                   </div>
-                  <div className="w-1/3 text-center text-xs font-semibold text-[#14b8a6]">Career High Rank</div>
+                  <div className="w-1/3 text-center text-[11px] sm:text-xs font-semibold text-[#14b8a6]">Career High</div>
                   <div className="w-1/3 text-right font-bold text-indigo-600">
                     #{playerB.careerHighRank || playerB.ranking}
+                    {playerB.careerHighDate && (
+                      <span className="hidden sm:inline text-xs font-normal text-slate-500 ml-1">
+                        ({formatCareerHighDate(playerB.careerHighDate)})
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Ranking Timeline Comparison Chart */}
               <div className="mt-2">
-                <div className="flex items-center justify-between mb-3 px-2">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3 px-1">
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
                     Historical Ranking Comparison
                   </span>
-                  <div className="flex items-center gap-4 text-xs font-bold">
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-[#FA2E72]"></span> {playerA.name}</span>
-                    <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-indigo-600"></span> {playerB.name}</span>
+                  <div className="flex items-center gap-3 sm:gap-4 text-xs font-bold">
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#FA2E72]"></span> {playerA.name}</span>
+                    <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-indigo-600"></span> {playerB.name}</span>
                   </div>
                 </div>
 
-                <div className="w-full h-64 bg-slate-50 rounded-2xl border border-slate-100 relative p-4 flex flex-col justify-end">
-                  <div className="flex justify-between text-[11px] font-bold text-slate-400 mb-1">
+                <div className="w-full h-56 sm:h-64 bg-slate-50 rounded-2xl border border-slate-100 relative p-3 sm:p-4 flex flex-col justify-end">
+                  <div className="flex justify-between text-[10px] sm:text-[11px] font-bold text-slate-400 mb-1">
                     <span>Rank #{minRank} (Top)</span>
-                    <span>Higher Line = Better World Rank</span>
+                    <span>Higher Line = Better Rank</span>
                   </div>
 
-                  <div className="relative w-full h-44">
+                  <div className="relative w-full h-40 sm:h-44">
                     <svg
                       viewBox={`0 0 ${svgW} ${svgH}`}
                       className="w-full h-full overflow-visible pointer-events-none"
@@ -461,10 +481,10 @@ function ComparePageContent() {
                             className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
                             style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
                           >
-                            <span className="text-[9px] font-extrabold text-[#FA2E72] bg-white/90 backdrop-blur-xs px-1 rounded shadow-2xs border border-pink-100 -translate-y-4 whitespace-nowrap">
+                            <span className="text-[8px] sm:text-[9px] font-extrabold text-[#FA2E72] bg-white/90 backdrop-blur-xs px-1 rounded shadow-2xs border border-pink-100 -translate-y-3.5 sm:-translate-y-4 whitespace-nowrap">
                               #{cp.pt.ranking}
                             </span>
-                            <div className="w-3 h-3 rounded-full bg-[#FA2E72] border-2 border-white shadow-xs"></div>
+                            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#FA2E72] border-2 border-white shadow-xs"></div>
                           </div>
                         );
                       })}
@@ -479,8 +499,8 @@ function ComparePageContent() {
                             className="absolute flex flex-col items-center -translate-x-1/2 -translate-y-1/2"
                             style={{ left: `${leftPercent}%`, top: `${topPercent}%` }}
                           >
-                            <div className="w-3 h-3 rounded-full bg-[#4F46E5] border-2 border-white shadow-xs"></div>
-                            <span className="text-[9px] font-extrabold text-[#4F46E5] bg-white/90 backdrop-blur-xs px-1 rounded shadow-2xs border border-indigo-100 translate-y-4 whitespace-nowrap">
+                            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-[#4F46E5] border-2 border-white shadow-xs"></div>
+                            <span className="text-[8px] sm:text-[9px] font-extrabold text-[#4F46E5] bg-white/90 backdrop-blur-xs px-1 rounded shadow-2xs border border-indigo-100 translate-y-3.5 sm:translate-y-4 whitespace-nowrap">
                               #{cp.pt.ranking}
                             </span>
                           </div>
@@ -497,28 +517,28 @@ function ComparePageContent() {
 
       {/* Athlete Search Modal */}
       {searchModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-xl border border-slate-100 flex flex-col gap-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-lg shadow-xl border border-slate-100 flex flex-col gap-4 max-h-[85vh]">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="font-bold text-slate-900 text-base">
+              <h3 className="font-bold text-slate-900 text-sm sm:text-base">
                 Select Athlete for Player {searchModalOpen}
               </h3>
               <button
                 onClick={() => setSearchModalOpen(null)}
-                className="p-1 hover:bg-slate-100 rounded-full text-slate-400"
+                className="p-1 hover:bg-slate-100 rounded-full text-slate-400 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search athlete by name..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-full py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-[#FA2E72]"
+                className="w-full bg-slate-50 border border-slate-200 rounded-full py-2.5 pl-9.5 pr-4 text-xs sm:text-sm focus:outline-none focus:border-[#FA2E72]"
                 autoFocus
               />
             </div>
@@ -537,9 +557,9 @@ function ComparePageContent() {
                   <div
                     key={athlete.id}
                     onClick={() => selectAthlete(athlete)}
-                    className="p-3 rounded-2xl hover:bg-pink-50 flex items-center justify-between cursor-pointer transition-colors"
+                    className="p-3 rounded-2xl hover:bg-pink-50 flex items-center justify-between cursor-pointer transition-colors active:scale-[0.98]"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs">
                         <AthleteImage
                           src={athlete.imageUrl}
@@ -550,12 +570,12 @@ function ComparePageContent() {
                           fallbackLetter={athlete.name.charAt(0)}
                         />
                       </div>
-                      <div>
-                        <div className="font-bold text-slate-800 text-sm">{athlete.name}</div>
-                        <div className="text-[11px] text-slate-400">{athlete.country}</div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-800 text-xs sm:text-sm truncate">{athlete.name}</div>
+                        <div className="text-[11px] text-slate-400 truncate">{athlete.country}</div>
                       </div>
                     </div>
-                    <div className="text-xs font-bold text-[#FA2E72]">Rank #{athlete.ranking}</div>
+                    <div className="text-xs font-bold text-[#FA2E72] shrink-0 pl-2">Rank #{athlete.ranking}</div>
                   </div>
                 ))
               )}

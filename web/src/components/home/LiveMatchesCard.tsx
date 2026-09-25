@@ -1,13 +1,14 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { ArrowRight, Radio } from 'lucide-react';
 import { liveMatches } from '@/data/dummyData';
 import { TeamBadge } from '../ui/TeamBadge';
 
 export const LiveMatchesCard: React.FC = () => {
   return (
-    <div className="w-full bg-white rounded-3xl p-5 border border-slate-100 shadow-xs flex flex-col justify-between">
+    <div className="w-full bg-white rounded-3xl p-4 sm:p-5 border border-slate-100 shadow-xs flex flex-col justify-between">
       {/* Card Header */}
       <div className="flex items-center justify-between pb-3 border-b border-slate-100/80">
         <div className="flex items-center gap-2">
@@ -16,10 +17,10 @@ export const LiveMatchesCard: React.FC = () => {
           </div>
           <h2 className="text-sm font-bold text-slate-900 tracking-tight">Live Matches</h2>
         </div>
-        <button className="flex items-center gap-1 text-xs font-semibold text-[#FA2E72] hover:text-[#E02263] transition-colors cursor-pointer">
+        <Link href="/rankings" className="flex items-center gap-1 text-xs font-semibold text-[#FA2E72] hover:text-[#E02263] transition-colors cursor-pointer">
           <span>View All</span>
           <ArrowRight className="w-3 h-3" />
-        </button>
+        </Link>
       </div>
 
       {/* Match Items List */}
@@ -34,9 +35,9 @@ export const LiveMatchesCard: React.FC = () => {
             </div>
 
             {/* Scoreboard and Live Badge Row */}
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
               {/* Left Indicator & Player Scores */}
-              <div className="flex items-start gap-2.5 flex-1 min-w-0">
+              <div className="flex items-start gap-2 flex-1 min-w-0">
                 {/* Red Live Dot */}
                 <div className="pt-1">
                   <span className="relative flex h-2 w-2">
@@ -55,7 +56,7 @@ export const LiveMatchesCard: React.FC = () => {
                         {match.player1.name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 font-bold text-xs text-slate-900">
+                    <div className="flex items-center gap-1.5 sm:gap-2 font-bold text-xs text-slate-900 shrink-0">
                       {match.player1.scores.map((score, sIdx) => (
                         <span key={sIdx} className="w-3 text-center">
                           {score}
@@ -72,7 +73,7 @@ export const LiveMatchesCard: React.FC = () => {
                         {match.player2.name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 font-bold text-xs text-slate-900">
+                    <div className="flex items-center gap-1.5 sm:gap-2 font-bold text-xs text-slate-900 shrink-0">
                       {match.player2.scores.map((score, sIdx) => (
                         <span key={sIdx} className="w-3 text-center">
                           {score}
@@ -85,7 +86,7 @@ export const LiveMatchesCard: React.FC = () => {
 
               {/* LIVE Pill on Right */}
               <div className="shrink-0 pl-1">
-                <span className="px-2.5 py-1 rounded-full border border-[#FA2E72]/30 bg-[#FDF2F4] text-[#FA2E72] text-[10px] font-bold tracking-wider uppercase">
+                <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full border border-[#FA2E72]/30 bg-[#FDF2F4] text-[#FA2E72] text-[9px] sm:text-[10px] font-bold tracking-wider uppercase">
                   LIVE
                 </span>
               </div>

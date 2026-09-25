@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "mkdir -p public/data/json && cp -r src/data/json/* public/data/json/",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"

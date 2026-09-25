@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { sportCategories } from '@/data/dummyData';
+import { getAssetUrl } from '@/lib/getAssetUrl';
 
 const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, className = '' }) => {
   switch (name) {
@@ -53,16 +54,16 @@ const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, class
 
 export const SportsGrid: React.FC = () => {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4">
       {sportCategories.map((sport) => (
         <Link
           key={sport.id}
-          href={`/rankings`}
-          className="relative h-[138px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5"
+          href={`/rankings?sport=${encodeURIComponent(sport.title)}`}
+          className="relative h-[115px] sm:h-[138px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
         >
           {/* Background image */}
           <Image
-            src={sport.image}
+            src={getAssetUrl(sport.image)}
             alt={sport.title}
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
@@ -73,16 +74,16 @@ export const SportsGrid: React.FC = () => {
           <div className={`absolute inset-0 bg-gradient-to-r ${sport.gradientOverlay} z-1`} />
 
           {/* Card Content */}
-          <div className="relative z-2 h-full p-4 flex flex-col justify-between text-white">
-            <div className="flex items-start gap-3">
-              <div className="p-1 rounded-full text-white/95 shrink-0">
-                <SportIcon name={sport.iconName} className="w-7 h-7" />
+          <div className="relative z-2 h-full p-3.5 sm:p-4 flex flex-col justify-between text-white">
+            <div className="flex items-start gap-2.5 sm:gap-3">
+              <div className="p-0.5 sm:p-1 rounded-full text-white/95 shrink-0">
+                <SportIcon name={sport.iconName} className="w-5 h-5 sm:w-7 sm:h-7" />
               </div>
-              <div className="pt-0.5">
-                <h3 className="text-base font-bold leading-tight tracking-tight text-white drop-shadow-xs">
+              <div className="pt-0.5 min-w-0">
+                <h3 className="text-xs sm:text-base font-bold leading-tight tracking-tight text-white drop-shadow-xs truncate">
                   {sport.title}
                 </h3>
-                <p className="text-[11px] text-white/80 font-normal tracking-wide mt-0.5">
+                <p className="text-[10px] sm:text-[11px] text-white/80 font-normal tracking-wide mt-0.5 truncate">
                   {sport.subtitle}
                 </p>
               </div>
@@ -90,8 +91,8 @@ export const SportsGrid: React.FC = () => {
 
             {/* Circular action button */}
             <div>
-              <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-white transition-all group-hover:bg-white group-hover:text-slate-900 group-hover:scale-105">
-                <ArrowRight className="w-4 h-4" />
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-white transition-all group-hover:bg-white group-hover:text-slate-900 group-hover:scale-105">
+                <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </div>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { Trophy, Search, ArrowLeftRight } from 'lucide-react';
 import { SportsSearchLogo } from '../ui/SportsSearchLogo';
+import { getAssetUrl } from '@/lib/getAssetUrl';
 
 interface NavItem {
   id: string;
@@ -24,10 +25,10 @@ export const Sidebar: React.FC = () => {
   const pathname = usePathname() || '/rankings';
 
   return (
-    <aside className="relative w-60 min-h-screen bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 select-none overflow-hidden">
+    <aside className="hidden md:flex relative w-60 min-h-screen bg-white border-r border-slate-100 flex-col justify-between shrink-0 select-none overflow-hidden">
       {/* Top section with logo and navigation */}
       <div className="z-10 pt-6 px-6">
-        <Link href="/rankings">
+        <Link href="/">
           <SportsSearchLogo className="mb-8" />
         </Link>
 
@@ -64,7 +65,7 @@ export const Sidebar: React.FC = () => {
       <div className="relative w-full h-80 pointer-events-none mt-auto">
         <div className="absolute -bottom-6 -left-6 w-72 h-88 opacity-80">
           <Image
-            src="/images/tennis-player-silhouette.svg"
+            src={getAssetUrl('/images/tennis-player-silhouette.svg')}
             alt="Tennis Player Illustration"
             fill
             className="object-contain object-bottom-left"

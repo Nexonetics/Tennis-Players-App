@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy Web Apps to GitHub Pages
 
 on:
   push:
@@ -17,40 +17,70 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Calculate Slugs & Target Paths
+        id: config
+        run: |
+          CLEAN_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "next_base_path=/${{ github.event.repository.name }}" >> $GITHUB_OUTPUT
+            echo "next_dest_dir=" >> $GITHUB_OUTPUT
+          else
+            # Next.js previews deployed to previews/next-<branch>
+            echo "next_base_path=/${{ github.event.repository.name }}/previews/next-${CLEAN_NAME}" >> $GITHUB_OUTPUT
+            echo "next_dest_dir=previews/next-${CLEAN_NAME}" >> $GITHUB_OUTPUT
+          fi
+          
+          # Flutter previews deployed to exact link previews/<branch>
+          echo "flutter_base_href=/${{ github.event.repository.name }}/previews/${CLEAN_NAME}/" >> $GITHUB_OUTPUT
+          echo "flutter_dest_dir=previews/${CLEAN_NAME}" >> $GITHUB_OUTPUT
+
+      # --- 1. Build & Deploy Flutter Web App for Branch Previews ---
       - name: Install Flutter
+        if: github.ref_name != 'main'
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          
-      - name: Get Dependencies
+
+      - name: Build Flutter Web
+        if: github.ref_name != 'main'
         run: |
           cd frontend
           flutter pub get
-          
-      - name: Calculate Base Href & Target Dir
-        id: config
-        run: |
-          if [ "${{ github.ref_name }}" = "main" ]; then
-            echo "base_href=/${{ github.event.repository.name }}/" >> $GITHUB_OUTPUT
-            echo "dest_dir=" >> $GITHUB_OUTPUT
-          else
-            # Clean branch name for URL safety (replace slash with hyphen)
-            CLEAN_NAME=$(echo "${{ github.ref_name }}" | sed 's/\//-/g')
-            echo "base_href=/${{ github.event.repository.name }}/previews/${CLEAN_NAME}/" >> $GITHUB_OUTPUT
-            echo "dest_dir=previews/${CLEAN_NAME}" >> $GITHUB_OUTPUT
-          fi
-          
-      - name: Build Web
-        run: |
-          cd frontend
-          flutter build web --release --base-href "${{ steps.config.outputs.base_href }}"
-          
-      - name: Deploy to gh-pages branch
+          flutter build web --release --base-href "${{ steps.config.outputs.flutter_base_href }}"
+
+      - name: Deploy Flutter Web Preview to gh-pages
+        if: github.ref_name != 'main'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./frontend/build/web
-          destination_dir: ${{ steps.config.outputs.dest_dir }}
+          destination_dir: ${{ steps.config.outputs.flutter_dest_dir }}
+          keep_files: true
+
+      # --- 2. Build & Deploy Next.js Web App ---
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Next.js Dependencies
+        run: |
+          cd web
+          npm ci
+
+      - name: Build Next.js Static Web
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.config.outputs.next_base_path }}
+        run: |
+          cd web
+          npm run build
+
+      - name: Deploy Next.js Web App to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./web/out
+          destination_dir: ${{ steps.config.outputs.next_dest_dir }}
           keep_files: true
 
