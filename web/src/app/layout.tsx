@@ -21,7 +21,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={plusJakartaSans.variable}>
-      <body className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased md:overflow-hidden">
+      <body className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans antialiased md:overflow-hidden" suppressHydrationWarning>
         <LayoutShell>{children}</LayoutShell>
       </body>
     </html>
