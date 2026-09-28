@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Trophy, Search, ArrowLeftRight } from 'lucide-react';
 import { SportsSearchLogo } from '../ui/SportsSearchLogo';
 import { getAssetUrl } from '@/lib/getAssetUrl';
+import { useSports } from '@/context/SportsContext';
 
 interface NavItem {
   id: string;
@@ -23,6 +24,7 @@ const navItems: NavItem[] = [
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname() || '/rankings';
+  const { getNavHref } = useSports();
 
   return (
     <aside className="hidden md:flex relative w-60 min-h-screen bg-white border-r border-slate-100 flex-col justify-between shrink-0 select-none overflow-hidden">
@@ -37,11 +39,12 @@ export const Sidebar: React.FC = () => {
             const Icon = item.icon;
             // Handle root path or exact match
             const isActive = pathname === item.href || (pathname === '/' && item.id === 'rankings');
+            const targetHref = getNavHref(item.href);
 
             return (
               <Link
                 key={item.id}
-                href={item.href}
+                href={targetHref}
                 className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-[0.95rem] font-medium transition-all duration-200 cursor-pointer ${
                   isActive
                     ? 'bg-[#FDF2F4] text-[#FA2E72] font-semibold shadow-xs'

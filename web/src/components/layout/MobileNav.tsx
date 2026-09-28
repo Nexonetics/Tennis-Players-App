@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Trophy, Search, ArrowLeftRight, Menu } from 'lucide-react';
+import { useSports } from '@/context/SportsContext';
 
 interface MobileNavProps {
   onOpenDrawer: () => void;
@@ -11,6 +12,7 @@ interface MobileNavProps {
 
 export const MobileNav: React.FC<MobileNavProps> = ({ onOpenDrawer }) => {
   const pathname = usePathname() || '/';
+  const { getNavHref } = useSports();
 
   const navItems = [
     { id: 'home', label: 'Home', href: '/', icon: Home },
@@ -26,11 +28,12 @@ export const MobileNav: React.FC<MobileNavProps> = ({ onOpenDrawer }) => {
         const isActive =
           pathname === item.href ||
           (item.href !== '/' && pathname.startsWith(item.href));
+        const targetHref = getNavHref(item.href);
 
         return (
           <Link
             key={item.id}
-            href={item.href}
+            href={targetHref}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl min-w-[60px] transition-all cursor-pointer active:scale-95 ${
               isActive ? 'text-[#FA2E72] font-bold' : 'text-slate-500 hover:text-slate-800 font-medium'
             }`}

@@ -8,6 +8,8 @@ import Link from 'next/link';
 import { UnifiedAthlete } from '@/types';
 import { searchAthletes } from '@/lib/localDataService';
 
+import { useSports } from '@/context/SportsContext';
+
 // Safe Athlete Image component with onError fallback
 const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
   src?: string;
@@ -40,35 +42,11 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
 };
 
 function RankingsContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const sportParam = searchParams.get('sport');
-
-  const [activeSport, setActiveSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>(
-    sportParam && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(sportParam)
-      ? (sportParam as any)
-      : 'Tennis'
-  );
-  const [activeCategory, setActiveCategory] = useState<'Men' | 'Women'>('Men');
+  const { sport: activeSport, gender: activeCategory, setSport: handleSportChange, setGender: setActiveCategory } = useSports();
   const [players, setPlayers] = useState<UnifiedAthlete[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-
-  useEffect(() => {
-    const s = searchParams.get('sport');
-    if (s && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(s)) {
-      setActiveSport(s as any);
-    }
-  }, [searchParams]);
-
-  const handleSportChange = (sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball') => {
-    setActiveSport(sport);
-    setPage(1);
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('sport', sport);
-    router.replace(`/rankings?${params.toString()}`, { scroll: false });
-  };
 
 
   useEffect(() => {
