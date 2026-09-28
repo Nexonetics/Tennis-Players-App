@@ -475,17 +475,23 @@ def export_all():
         # -------------------------------------------------------------
         # 7. SYNC ALL JSON ASSETS TO NEXT.JS WEB APP
         # -------------------------------------------------------------
-        WEB_OUT_DIR = os.path.join(project_root, 'web', 'src', 'data', 'json')
         if os.path.exists(os.path.join(project_root, 'web')):
             import shutil
-            os.makedirs(WEB_OUT_DIR, exist_ok=True)
-            print("\n7. Syncing asset caches to Next.js Web App (web/src/data/json/)...")
+            web_target_dirs = [
+                os.path.join(project_root, 'web', 'src', 'data', 'json'),
+                os.path.join(project_root, 'web', 'public', 'data', 'json'),
+                os.path.join(project_root, 'web', 'out', 'data', 'json'),
+            ]
+            print("\n7. Syncing asset caches to Next.js Web App (web/src, web/public, web/out)...")
             json_files = [f for f in os.listdir(OUT_DIR) if f.endswith('.json')]
-            for jf in json_files:
-                src_path = os.path.join(OUT_DIR, jf)
-                dst_path = os.path.join(WEB_OUT_DIR, jf)
-                shutil.copy2(src_path, dst_path)
-                print(f"   Synced -> {dst_path}")
+            for target_dir in web_target_dirs:
+                if os.path.exists(os.path.dirname(target_dir)):
+                    os.makedirs(target_dir, exist_ok=True)
+                    for jf in json_files:
+                        src_path = os.path.join(OUT_DIR, jf)
+                        dst_path = os.path.join(target_dir, jf)
+                        shutil.copy2(src_path, dst_path)
+                        print(f"   Synced -> {dst_path}")
 
         print("\n" + "=" * 60)
         print(f"ALL LOCAL ASSETS EXPORTED AND SYNCED IN {time.time()-t0:.2f} SECONDS!")

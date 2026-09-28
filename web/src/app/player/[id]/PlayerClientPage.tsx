@@ -103,8 +103,21 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
   const isTeam = athlete.sport === 'Football' || athlete.sport === 'Basketball';
   const extra = (athlete.extraInfo || {}) as Record<string, any>;
 
-  // Format ranking history for SVG chart
-  const recentHistory = history.length > 0 ? history.slice(-12) : [];
+  // Helper function to sample points evenly across full career history timeline
+  const sampleTimeline = (historyList: HistoryPoint[], maxPoints = 12): HistoryPoint[] => {
+    if (!historyList || historyList.length === 0) return [];
+    if (historyList.length <= maxPoints) return historyList;
+    const sampled: HistoryPoint[] = [];
+    const step = (historyList.length - 1) / (maxPoints - 1);
+    for (let i = 0; i < maxPoints; i++) {
+      const idx = Math.min(historyList.length - 1, Math.round(i * step));
+      sampled.push(historyList[idx]);
+    }
+    return sampled;
+  };
+
+  // Format ranking history for SVG chart (samples across entire career timeline)
+  const recentHistory = sampleTimeline(history, 12);
   const validHistoryRanks = recentHistory
     .map((h) => (typeof h.ranking === 'number' && !isNaN(h.ranking) ? h.ranking : parseInt(String(h.ranking), 10)))
     .filter((r) => !isNaN(r));
