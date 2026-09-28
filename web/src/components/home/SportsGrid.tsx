@@ -7,6 +7,8 @@ import { ArrowRight } from 'lucide-react';
 import { sportCategories } from '@/data/dummyData';
 import { getAssetUrl } from '@/lib/getAssetUrl';
 
+import { useSports } from '@/context/SportsContext';
+
 const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, className = '' }) => {
   switch (name) {
     case 'tennis':
@@ -53,12 +55,14 @@ const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, class
 };
 
 export const SportsGrid: React.FC = () => {
+  const { gender, setSport } = useSports();
   return (
     <div className="grid grid-cols-2 gap-3 sm:gap-4">
       {sportCategories.map((sport) => (
         <Link
           key={sport.id}
-          href={`/rankings?sport=${encodeURIComponent(sport.title)}`}
+          href={`/rankings?sport=${encodeURIComponent(sport.title)}&gender=${gender}`}
+          onClick={() => setSport(sport.title as any)}
           className="relative h-[115px] sm:h-[138px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
         >
           {/* Background image */}

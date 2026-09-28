@@ -8,6 +8,8 @@ import { Search as SearchIcon, MapPin, BarChart3, Loader2 } from 'lucide-react';
 import { UnifiedAthlete } from '@/types';
 import { getUniqueCountries, searchAthletes } from '@/lib/localDataService';
 
+import { useSports } from '@/context/SportsContext';
+
 // Safe Athlete Image component with onError fallback
 const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
   src?: string;
@@ -42,14 +44,8 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
 function SearchContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
-  const initialSport = searchParams.get('sport');
+  const { sport, gender, setSport, setGender } = useSports();
 
-  const [sport, setSport] = useState<'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'>(
-    initialSport && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(initialSport)
-      ? (initialSport as any)
-      : 'Tennis'
-  );
-  const [gender, setGender] = useState<'Men' | 'Women'>('Men');
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedCountry, setSelectedCountry] = useState('All');
   const [rankRange, setRankRange] = useState('All');
@@ -62,15 +58,11 @@ function SearchContent() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Synchronize state when URL query params change
+  // Synchronize search query state when URL parameter changes
   useEffect(() => {
     const q = searchParams.get('q');
     if (q !== null && q !== searchQuery) {
       setSearchQuery(q);
-    }
-    const s = searchParams.get('sport');
-    if (s && ['Tennis', 'Table Tennis', 'Football', 'Basketball'].includes(s) && s !== sport) {
-      setSport(s as any);
     }
   }, [searchParams]);
 

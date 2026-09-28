@@ -8,6 +8,7 @@ import { X, Trophy, Search, ArrowLeftRight, Home, ChevronRight, User } from 'luc
 import { SportsSearchLogo } from '../ui/SportsSearchLogo';
 import { currentUser, sportCategories } from '@/data/dummyData';
 import { getAssetUrl } from '@/lib/getAssetUrl';
+import { useSports } from '@/context/SportsContext';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ interface MobileDrawerProps {
 
 export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname() || '/';
+  const { getNavHref } = useSports();
 
   // Prevent background scrolling when drawer is open
   useEffect(() => {
@@ -74,11 +76,12 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
               const isActive =
                 pathname === item.href ||
                 (item.href !== '/' && pathname.startsWith(item.href));
+              const targetHref = getNavHref(item.href);
 
               return (
                 <Link
                   key={item.id}
-                  href={item.href}
+                  href={targetHref}
                   onClick={onClose}
                   className={`flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all cursor-pointer ${
                     isActive
