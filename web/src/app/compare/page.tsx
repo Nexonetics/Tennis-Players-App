@@ -157,11 +157,24 @@ function ComparePageContent() {
     }
   };
 
-  // Connected SVG timeline calculation for comparison
-  const recentA = historyA.slice(-10);
-  const recentB = historyB.slice(-10);
+  // Helper function to sample points evenly across full career history timeline
+  const sampleTimeline = (history: HistoryPoint[], maxPoints = 12): HistoryPoint[] => {
+    if (!history || history.length === 0) return [];
+    if (history.length <= maxPoints) return history;
+    const sampled: HistoryPoint[] = [];
+    const step = (history.length - 1) / (maxPoints - 1);
+    for (let i = 0; i < maxPoints; i++) {
+      const idx = Math.min(history.length - 1, Math.round(i * step));
+      sampled.push(history[idx]);
+    }
+    return sampled;
+  };
 
-  const allRanks = [...recentA.map(h => h.ranking), ...recentB.map(h => h.ranking)];
+  // Connected SVG timeline calculation for comparison (samples full career history)
+  const timelineA = sampleTimeline(historyA, 12);
+  const timelineB = sampleTimeline(historyB, 12);
+
+  const allRanks = [...timelineA.map(h => h.ranking), ...timelineB.map(h => h.ranking)];
   if (playerA) allRanks.push(playerA.ranking);
   if (playerB) allRanks.push(playerB.ranking);
 
@@ -176,14 +189,14 @@ function ComparePageContent() {
   const usableW = svgW - 2 * padX;
   const usableH = svgH - 2 * padY;
 
-  const pointsA = recentA.map((pt, i) => {
-    const x = recentA.length === 1 ? svgW / 2 : padX + (i / (recentA.length - 1)) * usableW;
+  const pointsA = timelineA.map((pt, i) => {
+    const x = timelineA.length === 1 ? svgW / 2 : padX + (i / (timelineA.length - 1)) * usableW;
     const y = padY + ((pt.ranking - minRank) / spanRank) * usableH;
     return { x, y, pt };
   });
 
-  const pointsB = recentB.map((pt, i) => {
-    const x = recentB.length === 1 ? svgW / 2 : padX + (i / (recentB.length - 1)) * usableW;
+  const pointsB = timelineB.map((pt, i) => {
+    const x = timelineB.length === 1 ? svgW / 2 : padX + (i / (timelineB.length - 1)) * usableW;
     const y = padY + ((pt.ranking - minRank) / spanRank) * usableH;
     return { x, y, pt };
   });
