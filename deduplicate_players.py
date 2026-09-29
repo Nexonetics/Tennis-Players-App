@@ -84,6 +84,55 @@ def pick_best_player(p1, p2):
 
     return merged
 
+# Country normalization: maps full names / alternate spellings to 3-letter codes
+# so that "Portugal" and "POR" are treated as the same country.
+_COUNTRY_NORM = {
+    'PORTUGAL': 'POR', 'SPAIN': 'ESP', 'FRANCE': 'FRA', 'GERMANY': 'GER',
+    'ITALY': 'ITA', 'CHINA': 'CHN', 'JAPAN': 'JPN', 'KOREA REPUBLIC': 'KOR',
+    'SOUTH KOREA': 'KOR', 'NORTH KOREA': 'PRK', 'KOREA DPR': 'PRK',
+    'UNITED STATES': 'USA', 'UNITED STATES OF AMERICA': 'USA',
+    'GREAT BRITAIN': 'GBR', 'ENGLAND': 'ENG', 'BRAZIL': 'BRA',
+    'ARGENTINA': 'ARG', 'COLOMBIA': 'COL', 'MEXICO': 'MEX', 'CHILE': 'CHI',
+    'PERU': 'PER', 'CUBA': 'CUB', 'RUSSIA': 'RUS', 'UKRAINE': 'UKR',
+    'ROMANIA': 'ROU', 'ROUMANIA': 'ROU', 'CZECHIA': 'CZE', 'CZECH REPUBLIC': 'CZE',
+    'SLOVAKIA': 'SVK', 'SLOVAK REPUBLIC': 'SVK', 'SERBIA': 'SRB',
+    'CROATIA': 'CRO', 'SLOVENIA': 'SLO', 'AUSTRIA': 'AUT', 'BELGIUM': 'BEL',
+    'NETHERLANDS': 'NED', 'DENMARK': 'DEN', 'SWEDEN': 'SWE', 'NORWAY': 'NOR',
+    'FINLAND': 'FIN', 'SWITZERLAND': 'SUI', 'TURKEY': 'TUR', 'TÜRKIYE': 'TUR',
+    'INDIA': 'IND', 'INDONESIA': 'INA', 'MALAYSIA': 'MAS', 'THAILAND': 'THA',
+    'CHINESE TAIPEI': 'TPE', 'HONG KONG': 'HKG', 'HONG KONG, CHINA': 'HKG',
+    'MACAO': 'MAC', 'MACAO, CHINA': 'MAC', 'EGYPT': 'EGY', 'ALGERIA': 'ALG',
+    'AUSTRALIA': 'AUS', 'NEW ZEALAND': 'NZL', 'CANADA': 'CAN',
+    'SOUTH AFRICA': 'RSA', 'NIGERIA': 'NGR', 'KENYA': 'KEN',
+    'KAZAKHSTAN': 'KAZ', 'UZBEKISTAN': 'UZB', 'GEORGIA': 'GEO',
+    'ISRAEL': 'ISR', 'MOROCCO': 'MAR', 'TUNISIA': 'TUN',
+    'PAPUA NEW GUINEA': 'PNG', 'SAN MARINO': 'SMR', 'NORTH MACEDONIA': 'MKD',
+    'MACEDONIA': 'MKD', 'KYRGYZSTAN': 'KGZ', 'CAMEROON': 'CMR',
+    'CONGO BRAZZAVILLE': 'CGO', 'REPUBLIC OF CONGO': 'CGO',
+    "COTE D'IVOIRE": 'CIV', 'IVORY COAST': 'CIV',
+    'TAHITI': 'PYF', 'FRENCH POLYNESIA': 'PYF',
+    'LEBANON': 'LBN', 'SENEGAL': 'SEN', 'DENMARK': 'DEN',
+    'BENIN': 'BEN', 'LAOS': 'LAO',
+    'CHINESE (BEFORE 2015)PORTUGUESE (AFTER 2015)[3]': 'POR',
+}
+
+def normalize_country_for_dedup(c):
+    """Normalize country to 3-letter code for comparison."""
+    if not c:
+        return '???'
+    up = c.strip().upper()
+    return _COUNTRY_NORM.get(up, up[:3] if len(up) >= 3 else up)
+
+def same_country(c1, c2):
+    """Return True if two country strings refer to the same country."""
+    n1 = normalize_country_for_dedup(c1)
+    n2 = normalize_country_for_dedup(c2)
+    # Unknown countries don't block a merge
+    if n1 == '???' or n2 == '???' or not n1 or not n2:
+        return True
+    return n1 == n2
+
+
 def process_file(json_filepath):
     print(f"Processing {json_filepath}...")
     with open(json_filepath, 'r', encoding='utf-8') as f:
@@ -104,12 +153,13 @@ def process_file(json_filepath):
     for g, group in gender_groups.items():
         unique_players = []
         image_url_to_index = {}
-        norm_name_to_index = {}
+        norm_name_to_index = {}  # norm_name -> list of (index, country)
 
         for p in group:
             img = p.get('image_url')
             name = p.get('name')
             norm_name = normalize_name(name)
+            p_country = p.get('country') or p.get('nationality') or ''
 
             target_index = None
 
@@ -118,10 +168,14 @@ def process_file(json_filepath):
                 if img in image_url_to_index:
                     target_index = image_url_to_index[img]
 
-            # 2. Match by normalized name tokens in same gender group
+            # 2. Match by normalized name tokens — only if SAME country
             if target_index is None and norm_name:
                 if norm_name in norm_name_to_index:
-                    target_index = norm_name_to_index[norm_name]
+                    # Check each existing candidate with this name
+                    for cand_index, cand_country in norm_name_to_index[norm_name]:
+                        if same_country(p_country, cand_country):
+                            target_index = cand_index
+                            break
 
             if target_index is not None:
                 existing_p = unique_players[target_index]
@@ -132,14 +186,20 @@ def process_file(json_filepath):
                 if merged_img and not is_generic_image(merged_img):
                     image_url_to_index[merged_img] = target_index
                 if norm_name:
-                    norm_name_to_index[norm_name] = target_index
+                    # Update country in the index entry for this slot
+                    norm_name_to_index[norm_name] = [
+                        (i, c) if i != target_index else (target_index, merged_p.get('country') or merged_p.get('nationality') or '')
+                        for i, c in norm_name_to_index.get(norm_name, [])
+                    ]
             else:
                 new_index = len(unique_players)
                 unique_players.append(p)
                 if img and not is_generic_image(img):
                     image_url_to_index[img] = new_index
                 if norm_name:
-                    norm_name_to_index[norm_name] = new_index
+                    if norm_name not in norm_name_to_index:
+                        norm_name_to_index[norm_name] = []
+                    norm_name_to_index[norm_name].append((new_index, p_country))
 
         # Re-rank logic: separate valid ranks (< 9999) and unranked/legacy (>= 9999)
         ranked_players = [p for p in unique_players if p.get('ranking') and 0 < p.get('ranking') < 9999]
