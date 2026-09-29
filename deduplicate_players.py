@@ -153,7 +153,7 @@ def process_file(json_filepath):
     for g, group in gender_groups.items():
         unique_players = []
         image_url_to_index = {}
-        norm_name_to_index = {}  # norm_name -> list of (index, country)
+        norm_name_to_index = {}  # norm_name -> list of (index, country, dob)
 
         for p in group:
             img = p.get('image_url')
@@ -168,14 +168,18 @@ def process_file(json_filepath):
                 if img in image_url_to_index:
                     target_index = image_url_to_index[img]
 
-            # 2. Match by normalized name tokens — only if SAME country
+            # 2. Match by normalized name tokens — only if SAME country AND compatible DOB
             if target_index is None and norm_name:
                 if norm_name in norm_name_to_index:
+                    p_dob = p.get('birth_date') or ''
                     # Check each existing candidate with this name
-                    for cand_index, cand_country in norm_name_to_index[norm_name]:
-                        if same_country(p_country, cand_country):
-                            target_index = cand_index
-                            break
+                    for cand_index, cand_country, cand_dob in norm_name_to_index[norm_name]:
+                        if not same_country(p_country, cand_country):
+                            continue  # different country → different person
+                        if p_dob and cand_dob and p_dob != cand_dob:
+                            continue  # both have DOB and they differ → different person
+                        target_index = cand_index
+                        break
 
             if target_index is not None:
                 existing_p = unique_players[target_index]
@@ -186,10 +190,11 @@ def process_file(json_filepath):
                 if merged_img and not is_generic_image(merged_img):
                     image_url_to_index[merged_img] = target_index
                 if norm_name:
-                    # Update country in the index entry for this slot
+                    # Update the entry for this slot
+                    merged_dob = merged_p.get('birth_date') or ''
                     norm_name_to_index[norm_name] = [
-                        (i, c) if i != target_index else (target_index, merged_p.get('country') or merged_p.get('nationality') or '')
-                        for i, c in norm_name_to_index.get(norm_name, [])
+                        (i, c, d) if i != target_index else (target_index, merged_p.get('country') or merged_p.get('nationality') or '', merged_dob)
+                        for i, c, d in norm_name_to_index.get(norm_name, [])
                     ]
             else:
                 new_index = len(unique_players)
@@ -199,7 +204,9 @@ def process_file(json_filepath):
                 if norm_name:
                     if norm_name not in norm_name_to_index:
                         norm_name_to_index[norm_name] = []
-                    norm_name_to_index[norm_name].append((new_index, p_country))
+                    p_dob = p.get('birth_date') or ''
+                    norm_name_to_index[norm_name].append((new_index, p_country, p_dob))
+
 
         # Re-rank logic: separate valid ranks (< 9999) and unranked/legacy (>= 9999)
         ranked_players = [p for p in unique_players if p.get('ranking') and 0 < p.get('ranking') < 9999]
