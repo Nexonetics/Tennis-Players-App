@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-import json
 import os
+import sys
+import json
 import shutil
+import re
+import unicodedata
 
 def is_generic_image(url):
     if not url:
@@ -12,7 +15,10 @@ def is_generic_image(url):
 def normalize_name(name):
     if not name:
         return ""
-    tokens = sorted(name.lower().strip().split())
+    nfkd = unicodedata.normalize('NFKD', name)
+    no_accents = ''.join([c for c in nfkd if not unicodedata.combining(c)])
+    cleaned = re.sub(r'[^a-zA-Z0-9\s]', ' ', no_accents).lower()
+    tokens = sorted([w for w in cleaned.split() if w])
     return " ".join(tokens)
 
 def pick_best_player(p1, p2):
@@ -103,7 +109,6 @@ def process_file(json_filepath):
         for p in group:
             img = p.get('image_url')
             name = p.get('name')
-            dob = p.get('birth_date')
             norm_name = normalize_name(name)
 
             target_index = None
@@ -113,15 +118,10 @@ def process_file(json_filepath):
                 if img in image_url_to_index:
                     target_index = image_url_to_index[img]
 
-            # 2. Match by normalized name if DOB doesn't conflict
+            # 2. Match by normalized name tokens in same gender group
             if target_index is None and norm_name:
                 if norm_name in norm_name_to_index:
-                    existing_idx = norm_name_to_index[norm_name]
-                    existing_p = unique_players[existing_idx]
-                    ex_dob = existing_p.get('birth_date')
-                    # If birth dates don't explicitly conflict (e.g. one is null or both match), treat as same player
-                    if not dob or not ex_dob or dob == ex_dob:
-                        target_index = existing_idx
+                    target_index = norm_name_to_index[norm_name]
 
             if target_index is not None:
                 existing_p = unique_players[target_index]
@@ -183,6 +183,8 @@ def main():
             with open(src_file, 'w', encoding='utf-8') as f:
                 json.dump(clean_data, f, indent=2, ensure_ascii=False)
 
+    web_out_json_dir = os.path.join(base_dir, "web/out/data/json")
+
     for fname in os.listdir(web_json_dir):
         src_p = os.path.join(web_json_dir, fname)
         if os.path.isfile(src_p):
@@ -190,6 +192,9 @@ def main():
             shutil.copy2(src_p, os.path.join(web_public_json_dir, fname))
             os.makedirs(frontend_json_dir, exist_ok=True)
             shutil.copy2(src_p, os.path.join(frontend_json_dir, fname))
+            if os.path.exists(os.path.join(base_dir, "web/out")):
+                os.makedirs(web_out_json_dir, exist_ok=True)
+                shutil.copy2(src_p, os.path.join(web_out_json_dir, fname))
 
     print("Data sync across web and frontend completed successfully.")
 

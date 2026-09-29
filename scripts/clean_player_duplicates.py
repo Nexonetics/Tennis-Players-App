@@ -52,12 +52,12 @@ def normalize_country(c: str) -> str:
     mapping = {
         'ITALY': 'ITA', 'ITA': 'ITA',
         'GERMANY': 'GER', 'GER': 'GER',
-        'FRANCE': 'FRA', 'FRA': 'FRA',
+        'FRANCE': 'FRA', 'FRENCH': 'FRA', 'FRA': 'FRA',
         'SWEDEN': 'SWE', 'SWE': 'SWE',
         'JAPAN': 'JPN', 'JPN': 'JPN',
         'CHINA': 'CHN', 'CHN': 'CHN',
         'HONG KONG': 'HKG', 'HONG KONG, CHINA': 'HKG', 'HKG': 'HKG',
-        'ENGLAND': 'ENG', 'ENG': 'ENG',
+        'ENGLAND': 'ENG', 'ENG': 'ENG', 'GREAT BRITAIN': 'GBR', 'GBR': 'GBR',
         'UNITED STATES': 'USA', 'UNITED STATES OF AMERICA': 'USA', 'USA': 'USA',
         'SLOVENIA': 'SLO', 'SLO': 'SLO',
         'AUSTRIA': 'AUT', 'AUT': 'AUT',
@@ -66,6 +66,7 @@ def normalize_country(c: str) -> str:
         'PORTUGAL': 'POR', 'POR': 'POR',
         'DENMARK': 'DEN', 'DEN': 'DEN',
         'SOUTH KOREA': 'KOR', 'KOREA REPUBLIC': 'KOR', 'KOR': 'KOR',
+        'NORTH KOREA': 'PRK', 'KOREA DPR': 'PRK', 'PRK': 'PRK',
         'INDIA': 'IND', 'IND': 'IND',
         'BRAZIL': 'BRA', 'BRA': 'BRA',
         'SPAIN': 'ESP', 'ESP': 'ESP',
@@ -76,7 +77,33 @@ def normalize_country(c: str) -> str:
         'BELGIUM': 'BEL', 'BEL': 'BEL',
         'ROUMANIA': 'ROU', 'ROMANIA': 'ROU', 'ROU': 'ROU',
         'PERU': 'PER', 'PER': 'PER',
-        'CHILE': 'CHI', 'CHI': 'CHI'
+        'CHILE': 'CHI', 'CHI': 'CHI',
+        'TURKEY': 'TUR', 'TÜRKIYE': 'TUR', 'TUR': 'TUR',
+        'MALDIVES': 'MDV', 'MDV': 'MDV',
+        'EL SALVADOR': 'ESA', 'ESA': 'ESA',
+        'COSTA RICA': 'CRC', 'CRC': 'CRC',
+        'MAURITIUS': 'MRI', 'MRI': 'MRI',
+        'CONGO DEMOCRATIC': 'COD', 'DEMOCRATIC REPUBLIC OF THE CONGO': 'COD', 'COD': 'COD',
+        'MALAYSIA': 'MAS', 'MAS': 'MAS',
+        'NEW CALEDONIA': 'NCL', 'NCL': 'NCL',
+        'TRINIDAD AND TOBAGO': 'TTO', 'TTO': 'TTO',
+        'MONGOLIA': 'MGL', 'MGL': 'MGL',
+        'INDONESIA': 'INA', 'INA': 'INA',
+        'RUSSIA': 'RUS', 'RUS': 'RUS',
+        'LUXEMBOURG': 'LUX', 'LUX': 'LUX',
+        'SRI LANKA': 'SRI', 'SRI': 'SRI',
+        'TAHITI': 'PYF', 'PYF': 'PYF',
+        'GUINEA': 'GUI', 'GUI': 'GUI',
+        'MACAO': 'MAC', 'MACAO, CHINA': 'MAC', 'MAC': 'MAC',
+        'CHINESE TAIPEI': 'TPE', 'TPE': 'TPE',
+        'BOTSWANA': 'BOT', 'BOT': 'BOT',
+        'KUWAIT': 'KUW', 'KUW': 'KUW',
+        'COLOMBIA': 'COL', 'COL': 'COL',
+        'LAOS': 'LAO', 'LAO': 'LAO',
+        'SWITZERLAND': 'SUI', 'SUI': 'SUI',
+        'ALGERIA': 'ALG', 'ALG': 'ALG',
+        'EGYPT': 'EGY', 'EGY': 'EGY',
+        'GREECE': 'GRE', 'GRE': 'GRE'
     }
     return mapping.get(c_up, c_up[:3])
 
@@ -177,7 +204,7 @@ def process_table_tennis(db, dry_run: bool = True):
     clusters = []
     for key, member_list in clusters_map.items():
         if len(member_list) > 1:
-            countries = set(normalize_country(m.country) for m in member_list if normalize_country(m.country) != 'UNKNOWN')
+            countries = set(normalize_country(m.country) for m in member_list if normalize_country(m.country) not in ('UNKNOWN', 'UNK'))
             if len(countries) <= 1:
                 dobs = set()
                 for m in member_list:
@@ -357,7 +384,7 @@ def process_tennis(db, dry_run: bool = True):
     clusters = []
     for key, member_list in clusters_map.items():
         if len(member_list) > 1:
-            countries = set(normalize_country(m.country) for m in member_list if normalize_country(m.country) != 'UNKNOWN')
+            countries = set(normalize_country(m.country) for m in member_list if normalize_country(m.country) not in ('UNKNOWN', 'UNK'))
             if len(countries) <= 1:
                 clusters.append(member_list)
 
