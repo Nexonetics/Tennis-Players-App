@@ -40,16 +40,16 @@ const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
 
 function formatCareerHighDate(dateStr?: string): string {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (!isNaN(d.getTime())) {
-    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-  }
   const parts = dateStr.split(/[-/]/);
   if (parts.length >= 2 && parts[0].length === 4) {
     const year = parts[0];
     const monthIdx = parseInt(parts[1], 10) - 1;
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     if (months[monthIdx]) return `${months[monthIdx]} ${year}`;
+  }
+  const d = new Date(dateStr);
+  if (!isNaN(d.getTime())) {
+    return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   }
   return dateStr;
 }
@@ -418,7 +418,7 @@ function ComparePageContent() {
                   <div className="w-1/3 text-left font-bold text-[#FA2E72]">
                     #{playerA.careerHighRank || playerA.ranking}
                     {playerA.careerHighDate && (
-                      <span className="hidden sm:inline text-xs font-normal text-slate-500 ml-1">
+                      <span className="text-[10px] sm:text-xs font-normal text-slate-500 ml-1 whitespace-nowrap">
                         ({formatCareerHighDate(playerA.careerHighDate)})
                       </span>
                     )}
@@ -427,7 +427,7 @@ function ComparePageContent() {
                   <div className="w-1/3 text-right font-bold text-indigo-600">
                     #{playerB.careerHighRank || playerB.ranking}
                     {playerB.careerHighDate && (
-                      <span className="hidden sm:inline text-xs font-normal text-slate-500 ml-1">
+                      <span className="text-[10px] sm:text-xs font-normal text-slate-500 ml-1 whitespace-nowrap">
                         ({formatCareerHighDate(playerB.careerHighDate)})
                       </span>
                     )}

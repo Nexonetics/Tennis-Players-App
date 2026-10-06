@@ -46,14 +46,18 @@ def export_all():
         # -------------------------------------------------------------
         print("\n1. Preloading legacy player profiles...")
         legacy_tennis_map = {}
+        legacy_tennis_by_id = {}
         for p in db.query(Player).all():
             if p.name:
                 legacy_tennis_map[p.name.strip().lower()] = p
+            legacy_tennis_by_id[p.id] = p
 
         legacy_tt_map = {}
+        legacy_tt_by_id = {}
         for p in db.query(TableTennisPlayer).all():
             if p.name:
                 legacy_tt_map[p.name.strip().lower()] = p
+            legacy_tt_by_id[p.id] = p
         print(f"   Loaded {len(legacy_tennis_map)} legacy tennis and {len(legacy_tt_map)} legacy TT profiles.")
 
         # -------------------------------------------------------------
@@ -132,7 +136,7 @@ def export_all():
             sorted_tuples = sorted(player_dict.values(), key=lambda x: (x[1] if x[1] else 99999, x[0].id))
             for hp, cur_rank in sorted_tuples:
                 full_name = f"{hp.first_name} {hp.last_name}".strip()
-                old_p = legacy_tennis_map.get(full_name.lower())
+                old_p = legacy_tennis_by_id.get(hp.id) or legacy_tennis_map.get(full_name.lower())
 
                 # Birth date
                 b_date = None
@@ -267,7 +271,7 @@ def export_all():
             sorted_tuples = sorted(player_dict.values(), key=lambda x: (x[1] if x[1] else 99999, x[0].id))
             for hp, cur_rank in sorted_tuples:
                 full_name = f"{hp.first_name} {hp.last_name}".strip()
-                old_p = legacy_tt_map.get(full_name.lower())
+                old_p = legacy_tt_by_id.get(hp.id) or legacy_tt_map.get(full_name.lower())
 
                 b_date = None
                 if hp.birth_year and hp.birth_month and hp.birth_date:

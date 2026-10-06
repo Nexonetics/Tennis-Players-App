@@ -133,6 +133,96 @@ def same_country(c1, c2):
     return n1 == n2
 
 
+def extract_year(dob_val):
+    if not dob_val:
+        return None
+    s = str(dob_val).strip()
+    m = re.search(r'\b(19\d\d|20\d\d)\b', s)
+    return int(m.group(1)) if m else None
+
+def get_headshot_id(url):
+    if not url:
+        return None
+    m = re.search(r'/(\d+)_', url)
+    return m.group(1) if m else None
+
+# Specifically protect known distinct player IDs from merging
+PROTECTED_DISTINCT_IDS = {
+    (14373, 3341), (3341, 14373),  # Lee Daeun
+    (4389, 4411), (4411, 4389),    # Maria Garcia POR / CUB
+    (4389, 4412), (4412, 4389),    # Maria Garcia POR / ARG
+    (4411, 4412), (4412, 4411),    # Maria Garcia CUB / ARG
+    (520, 13326), (13326, 520),    # Park Gyeongtae
+    (4822, 13386), (13386, 4822),  # Tsholofelo Gaokgalemelwe
+    (4085, 13330), (13330, 4085),  # Yang Hao-Jen
+}
+
+def can_merge_players(p1, p2):
+    """
+    Carefully compare ALL available data to determine if p1 and p2
+    are genuinely the exact same physical player, or different players with the same name.
+    """
+    # 1. Gender check
+    g1 = (p1.get('gender') or p1.get('category') or '').upper()
+    g2 = (p2.get('gender') or p2.get('category') or '').upper()
+    if g1 and g2 and g1 != g2:
+        return False
+
+    # 2. Distinct IDs check
+    id1 = p1.get('id')
+    id2 = p2.get('id')
+    if (id1, id2) in PROTECTED_DISTINCT_IDS:
+        return False
+
+    # 3. Normalized Name check
+    n1 = normalize_name(p1.get('name'))
+    n2 = normalize_name(p2.get('name'))
+    if n1 != n2:
+        return False
+
+    # Explicit protection for all Lee Daeun records
+    if "daeun" in n1 and "lee" in n1 and id1 != id2:
+        return False
+
+    # 4. Country check
+    c1 = p1.get('country') or p1.get('nationality') or ''
+    c2 = p2.get('country') or p2.get('nationality') or ''
+    if not same_country(c1, c2):
+        return False
+
+    # 5. Headshot image / photo ID check
+    img1 = p1.get('image_url')
+    img2 = p2.get('image_url')
+    if img1 and img2 and not is_generic_image(img1) and not is_generic_image(img2):
+        hid1 = get_headshot_id(img1)
+        hid2 = get_headshot_id(img2)
+        if hid1 and hid2 and hid1 != hid2:
+            return False  # Different official player photo IDs (e.g. 135391 vs 132702)
+        if not hid1 and not hid2 and img1 != img2:
+            return False
+
+    # 6. Birth date / year / age check
+    dob1 = p1.get('birth_date')
+    dob2 = p2.get('birth_date')
+    if dob1 and dob2:
+        if str(dob1) != str(dob2):
+            y1 = extract_year(dob1)
+            y2 = extract_year(dob2)
+            if y1 and y2 and y1 != y2:
+                return False
+
+    # 7. Active ranking in current snapshot check
+    # If BOTH players have an active rank (1 <= rank < 9999), and their ranks differ:
+    # A single physical player CANNOT be ranked at two different positions in the same official ranking list!
+    r1 = p1.get('ranking')
+    r2 = p2.get('ranking')
+    if isinstance(r1, int) and 0 < r1 < 9999 and isinstance(r2, int) and 0 < r2 < 9999:
+        if r1 != r2:
+            return False
+
+    return True
+
+
 def process_file(json_filepath):
     print(f"Processing {json_filepath}...")
     with open(json_filepath, 'r', encoding='utf-8') as f:
@@ -152,60 +242,22 @@ def process_file(json_filepath):
 
     for g, group in gender_groups.items():
         unique_players = []
-        image_url_to_index = {}
-        norm_name_to_index = {}  # norm_name -> list of (index, country, dob)
 
         for p in group:
-            img = p.get('image_url')
-            name = p.get('name')
-            norm_name = normalize_name(name)
-            p_country = p.get('country') or p.get('nationality') or ''
-
             target_index = None
 
-            # 1. Match by headshot image URL first if not generic
-            if img and not is_generic_image(img):
-                if img in image_url_to_index:
-                    target_index = image_url_to_index[img]
-
-            # 2. Match by normalized name tokens — only if SAME country AND compatible DOB
-            if target_index is None and norm_name:
-                if norm_name in norm_name_to_index:
-                    p_dob = p.get('birth_date') or ''
-                    # Check each existing candidate with this name
-                    for cand_index, cand_country, cand_dob in norm_name_to_index[norm_name]:
-                        if not same_country(p_country, cand_country):
-                            continue  # different country → different person
-                        if p_dob and cand_dob and p_dob != cand_dob:
-                            continue  # both have DOB and they differ → different person
-                        target_index = cand_index
-                        break
+            # Compare against existing unique players using all available data
+            for idx, existing_p in enumerate(unique_players):
+                if can_merge_players(existing_p, p):
+                    target_index = idx
+                    break
 
             if target_index is not None:
                 existing_p = unique_players[target_index]
                 merged_p = pick_best_player(existing_p, p)
                 unique_players[target_index] = merged_p
-
-                merged_img = merged_p.get('image_url')
-                if merged_img and not is_generic_image(merged_img):
-                    image_url_to_index[merged_img] = target_index
-                if norm_name:
-                    # Update the entry for this slot
-                    merged_dob = merged_p.get('birth_date') or ''
-                    norm_name_to_index[norm_name] = [
-                        (i, c, d) if i != target_index else (target_index, merged_p.get('country') or merged_p.get('nationality') or '', merged_dob)
-                        for i, c, d in norm_name_to_index.get(norm_name, [])
-                    ]
             else:
-                new_index = len(unique_players)
                 unique_players.append(p)
-                if img and not is_generic_image(img):
-                    image_url_to_index[img] = new_index
-                if norm_name:
-                    if norm_name not in norm_name_to_index:
-                        norm_name_to_index[norm_name] = []
-                    p_dob = p.get('birth_date') or ''
-                    norm_name_to_index[norm_name].append((new_index, p_country, p_dob))
 
 
         # Re-rank logic: separate valid ranks (< 9999) and unranked/legacy (>= 9999)
