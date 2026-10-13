@@ -31,9 +31,9 @@ WEB_OUT_DATA_DIR = os.path.join(BASE_DIR, "web/out/data/json")
 
 TARGET_YEAR = 2026
 TARGET_MONTH = 10
-TARGET_DAY = 5
+TARGET_DAY = 12
 TARGET_DATE_STR = f"{TARGET_YEAR}-{TARGET_MONTH:02d}-{TARGET_DAY:02d}"
-CACHE_FILE = os.path.join(BASE_DIR, "scratch/scraped_20261005_data.json")
+CACHE_FILE = os.path.join(BASE_DIR, "scratch/scraped_20261012_data.json")
 
 # WTT API
 WTT_PLAYER_API_URL = "https://wtt-website-api-prod-3-frontdoor-bddnb2haduafdze9.a01.azurefd.net/api/cms/GetPlayersDataByID/"
@@ -536,12 +536,12 @@ def _persist_table_tennis(sconn, pconn, tt_players):
         """, missing_in_p)
         pconn.commit()
 
-    # Sync historical rankings for 3341 and 14373 from SQLite to Neon if missing
+    # Sync historical rankings for 3341, 14373, 14835 from SQLite to Neon if missing
     scur.execute("""
         SELECT player_id, points, rank, ranking_year, ranking_month, ranking_date
         FROM tt_rankings_historical
-        WHERE player_id IN (3341, 14373) AND NOT (ranking_year = 2026 AND ranking_month = 10 AND ranking_date = 5)
-    """)
+        WHERE player_id IN (3341, 14373, 14835) AND NOT (ranking_year = ? AND ranking_month = ? AND ranking_date = ?)
+    """, (TARGET_YEAR, TARGET_MONTH, TARGET_DAY))
     ld_hist_rankings = [(r[0], r[1] or 0, r[2], r[3], r[4], r[5]) for r in scur.fetchall()]
     if ld_hist_rankings:
         execute_batch(pcur, """
@@ -590,7 +590,12 @@ def _persist_table_tennis(sconn, pconn, tt_players):
                 if 3341 not in used_tt_pids:
                     used_tt_pids.add(3341)
                     return 3341
-            # 3rd Lee Daeun (wtt_id 213349, rank 986) falls through to match or create distinct player
+            elif (wtt_id == "213349" or player["rank"] > 500):
+                scur.execute("SELECT id FROM tt_players_historical WHERE (birth_year=2009 AND birth_month=2 AND birth_date=8) OR id = 14835")
+                r3 = scur.fetchone()
+                if r3 and r3[0] not in used_tt_pids:
+                    used_tt_pids.add(r3[0])
+                    return r3[0]
 
         if wtt_id and wtt_id in tt_lookup_by_photo_id and tt_lookup_by_photo_id[wtt_id] not in used_tt_pids:
             pid = tt_lookup_by_photo_id[wtt_id]
@@ -703,15 +708,16 @@ def _persist_table_tennis(sconn, pconn, tt_players):
     pconn.commit()
 
     # Ensure all 3 Lee Daeuns specifically exist with exact rankings, birth dates, and images
+    pid_to_rank = {r[0]: r[2] for r in tt_rankings}
     ld_3_records = [
-        (14373, 129, date(2005, 3, 20), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/135391_HEADSHOT_R_LEE_Daeun.png"),
-        (3341, 231, date(2002, 12, 30), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/132702_HEADSHOT_R_LEE_Daeun.png")
+        (14373, pid_to_rank.get(14373, 133), date(2005, 3, 20), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/135391_HEADSHOT_R_LEE_Daeun.png"),
+        (3341, pid_to_rank.get(3341, 234), date(2002, 12, 30), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/132702_HEADSHOT_R_LEE_Daeun.png")
     ]
     # Check if 3rd Lee Daeun exists
-    scur.execute("SELECT id FROM tt_players_historical WHERE (birth_year=2009 AND birth_month=2 AND birth_date=8) OR picture LIKE '%213349%'")
+    scur.execute("SELECT id FROM tt_players_historical WHERE (birth_year=2009 AND birth_month=2 AND birth_date=8) OR picture LIKE '%213349%' OR id = 14835")
     r3 = scur.fetchone()
     if r3:
-        ld_3_records.append((r3[0], 986, date(2009, 2, 8), "https://wttwebcmsprod.blob.core.windows.net/websitefiles/images/general/men_default_left.png"))
+        ld_3_records.append((r3[0], pid_to_rank.get(r3[0], 980), date(2009, 2, 8), "https://wttwebcmsprod.blob.core.windows.net/websitefiles/images/general/men_default_left.png"))
 
     for pid, rnk, b_date, pic in ld_3_records:
         for conn_type, c, p_obj in [("SQLite", scur, sconn), ("Neon", pcur, pconn)]:
@@ -720,7 +726,7 @@ def _persist_table_tennis(sconn, pconn, tt_players):
                 c.execute("""
                     INSERT INTO table_tennis_players (id, name, country, ranking, birth_date, image_url, source, gender, last_updated)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (pid, "Lee Daeun", "Korea Republic", rnk, b_date, pic, "WTT Official", "F", datetime.now().isoformat()))
+                """, (pid, "Lee Daeun", "Korea Republic", rnk, b_date.isoformat(), pic, "WTT Official", "F", datetime.now().isoformat()))
             else:
                 c.execute("""
                     INSERT INTO table_tennis_players (id, name, country, ranking, birth_date, image_url, source, gender, last_updated)
