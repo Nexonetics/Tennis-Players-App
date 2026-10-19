@@ -5,6 +5,7 @@ class TableTennisPlayer {
   final String name;
   final String? country;
   final int? ranking;
+  final int? points;
   final DateTime? birthDate;
   final String? weight;
   final String? playingStyle;
@@ -22,6 +23,7 @@ class TableTennisPlayer {
     required this.name,
     this.country,
     this.ranking,
+    this.points,
     this.birthDate,
     this.weight,
     this.playingStyle,
@@ -56,6 +58,7 @@ class TableTennisPlayer {
       name: json['name'],
       country: json['country'],
       ranking: json['ranking'],
+      points: json['points'],
       birthDate: json['birth_date'] != null
           ? DateTime.parse(json['birth_date'])
           : null,

@@ -160,7 +160,9 @@ export function toUnifiedAthlete(
 
   // Calculate points string representation
   let points = '1,000';
-  if (ranking <= 10) {
+  if (raw.points !== undefined && raw.points !== null && raw.points !== '' && Number(raw.points) > 0) {
+    points = Number(raw.points).toLocaleString();
+  } else if (ranking <= 10) {
     points = `${(12000 - ranking * 800).toLocaleString()}`;
   } else if (ranking <= 50) {
     points = `${(4000 - ranking * 50).toLocaleString()}`;
