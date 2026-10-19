@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "mkdir -p public/data/json && cp -r src/data/json/* public/data/json/",
+    "prebuild": "node scripts/copy-data.js",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
