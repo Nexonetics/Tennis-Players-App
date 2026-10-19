@@ -148,13 +148,18 @@ def get_headshot_id(url):
 
 # Specifically protect known distinct player IDs from merging
 PROTECTED_DISTINCT_IDS = {
-    (14373, 3341), (3341, 14373),  # Lee Daeun
-    (4389, 4411), (4411, 4389),    # Maria Garcia POR / CUB
-    (4389, 4412), (4412, 4389),    # Maria Garcia POR / ARG
-    (4411, 4412), (4412, 4411),    # Maria Garcia CUB / ARG
-    (520, 13326), (13326, 520),    # Park Gyeongtae
-    (4822, 13386), (13386, 4822),  # Tsholofelo Gaokgalemelwe
-    (4085, 13330), (13330, 4085),  # Yang Hao-Jen
+    (14373, 3341), (3341, 14373),    # Lee Daeun (2005 vs 2002)
+    (14373, 14835), (14835, 14373),  # Lee Daeun (2005 vs 2009)
+    (3341, 14835), (14835, 3341),    # Lee Daeun (2002 vs 2009)
+    (4389, 4411), (4411, 4389),      # Maria Garcia POR / CUB
+    (4389, 4412), (4412, 4389),      # Maria Garcia POR / ARG
+    (4411, 4412), (4412, 4411),      # Maria Garcia CUB / ARG
+    (520, 13326), (13326, 520),      # Park Gyeongtae
+    (4822, 13386), (13386, 4822),    # Tsholofelo Gaokgalemelwe
+    (4085, 13330), (13330, 4085),    # Yang Hao-Jen
+    (5236, 14831), (14831, 5236),    # Boris Villavicencio
+    (13002, 14832), (14832, 13002),  # Sia Camara
+    (13090, 4531), (4531, 13090),    # Law Sum Yee
 }
 
 def can_merge_players(p1, p2):
@@ -282,10 +287,10 @@ def process_file(json_filepath):
     return all_deduped_players
 
 def main():
-    base_dir = "/home/nexonetics/nexonetics/tennis_app"
-    web_json_dir = os.path.join(base_dir, "web/src/data/json")
-    web_public_json_dir = os.path.join(base_dir, "web/public/data/json")
-    frontend_json_dir = os.path.join(base_dir, "frontend/assets/data")
+    base_dir = os.path.abspath(os.path.dirname(__file__))
+    web_json_dir = os.path.join(base_dir, "web", "src", "data", "json")
+    web_public_json_dir = os.path.join(base_dir, "web", "public", "data", "json")
+    frontend_json_dir = os.path.join(base_dir, "frontend", "assets", "data")
 
     target_files = [
         "tt_players.json",

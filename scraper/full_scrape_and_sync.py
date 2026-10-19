@@ -19,21 +19,28 @@ import sqlite3
 import psycopg2
 from psycopg2.extras import execute_batch
 
-# Paths
-BASE_DIR = "/home/nexonetics/nexonetics/tennis_app"
-SQLITE_PATH = os.path.join(BASE_DIR, "tennis.db")
-REMOTE_DB_URL = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
-FRONTEND_DATA_DIR = os.path.join(BASE_DIR, "frontend/assets/data")
-WEB_SRC_DATA_DIR = os.path.join(BASE_DIR, "web/src/data/json")
-WEB_PUB_DATA_DIR = os.path.join(BASE_DIR, "web/public/data/json")
-WEB_OUT_DATA_DIR = os.path.join(BASE_DIR, "web/out/data/json")
+# Paths
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+SQLITE_PATH = os.path.join(BASE_DIR, "tennis.db")
+REMOTE_DB_URL = os.getenv("DATABASE_URL") or "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+
+FRONTEND_DATA_DIR = os.path.join(BASE_DIR, "frontend", "assets", "data")
+WEB_SRC_DATA_DIR = os.path.join(BASE_DIR, "web", "src", "data", "json")
+WEB_PUB_DATA_DIR = os.path.join(BASE_DIR, "web", "public", "data", "json")
+WEB_OUT_DATA_DIR = os.path.join(BASE_DIR, "web", "out", "data", "json")
 
 TARGET_YEAR = 2026
 TARGET_MONTH = 10
-TARGET_DAY = 12
+TARGET_DAY = 19
 TARGET_DATE_STR = f"{TARGET_YEAR}-{TARGET_MONTH:02d}-{TARGET_DAY:02d}"
-CACHE_FILE = os.path.join(BASE_DIR, "scratch/scraped_20261012_data.json")
+CACHE_FILE = os.path.join(BASE_DIR, "scratch", f"scraped_{TARGET_YEAR}{TARGET_MONTH:02d}{TARGET_DAY:02d}_data.json")
 
 # WTT API
 WTT_PLAYER_API_URL = "https://wtt-website-api-prod-3-frontdoor-bddnb2haduafdze9.a01.azurefd.net/api/cms/GetPlayersDataByID/"
@@ -197,73 +204,86 @@ def scrape_all_wtt():
 
             while consecutive_empty < 2 and rank_start <= 2500:
                 url = f"https://www.worldtabletennis.com/allplayersranking?selectedTab={encoded_tab}&Age=SENIOR&Rank={rank_start}"
-                try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                    page.wait_for_timeout(2000)
-                    soup = BeautifulSoup(page.content(), "html.parser")
-                    rows = soup.select("tr.cursor_move") or soup.select("table tbody tr")
+                page_players = []
 
-                    seen_ranks = set()
-                    page_players = []
-                    for row in rows:
-                        rank_cell = row.select_one(".player-rank") or row.select_one("td:nth-child(1)")
-                        name_cell = row.select_one(".player_name") or row.select_one("td:nth-child(2)")
-                        country_cell = row.select_one(".country_name") or row.select_one("td:nth-child(3)")
-                        pts_cell = row.select_one(".points") or row.select_one("td:nth-child(4)")
+                for attempt in range(3):
+                    try:
+                        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                        try:
+                            page.wait_for_selector("tr.cursor_move", timeout=15000)
+                        except Exception:
+                            page.wait_for_timeout(2500)
 
-                        if not rank_cell or not name_cell:
-                            continue
+                        soup = BeautifulSoup(page.content(), "html.parser")
+                        rows = soup.select("tr.cursor_move") or soup.select("table tbody tr")
 
-                        raw_rank = rank_cell.text.strip()
-                        m = re.search(r"^\s*(\d+)", raw_rank) or re.search(r"(\d+)", raw_rank)
-                        if not m:
-                            continue
-                        rank = int(m.group(1))
-                        if rank in seen_ranks:
-                            continue
-                        seen_ranks.add(rank)
+                        seen_keys = set()
+                        for row in rows:
+                            rank_cell = row.select_one(".player-rank") or row.select_one("td:nth-child(1)")
+                            name_cell = row.select_one(".player_name") or row.select_one("td:nth-child(2)")
+                            country_cell = row.select_one(".country_name") or row.select_one("td:nth-child(3)")
+                            pts_cell = row.select_one(".points") or row.select_one("td:nth-child(4)")
 
-                        raw_name = name_cell.text.replace("^^", " ").strip()
-                        name = " ".join(raw_name.split()).strip()
-                        country = country_cell.text.strip() if country_cell else "Unknown"
+                            if not rank_cell or not name_cell:
+                                continue
 
-                        pts = 0
-                        if pts_cell:
-                            p_str = re.sub(r"\D", "", pts_cell.text.strip())
-                            if p_str:
-                                pts = int(p_str)
+                            raw_rank = rank_cell.text.strip()
+                            m = re.search(r"^\s*(\d+)", raw_rank) or re.search(r"(\d+)", raw_rank)
+                            if not m:
+                                continue
+                            rank = int(m.group(1))
 
-                        player_id = None
-                        link = name_cell.select_one("a[href*='playerId=']")
-                        if link:
-                            href = link.get("href", "")
-                            id_m = re.search(r"playerId=(\d+)", href)
-                            if id_m:
-                                player_id = id_m.group(1)
+                            raw_name = name_cell.text.replace("^^", " ").strip()
+                            name = " ".join(raw_name.split()).strip()
+                            country = country_cell.text.strip() if country_cell else "Unknown"
 
-                        page_players.append({
-                            "rank": rank,
-                            "name": name,
-                            "country": country,
-                            "points": pts,
-                            "wtt_player_id": player_id,
-                            "gender": gender_code,
-                            "gender_int": gender_int,
-                        })
+                            pts = 0
+                            if pts_cell:
+                                p_str = re.sub(r"\D", "", pts_cell.text.strip())
+                                if p_str:
+                                    pts = int(p_str)
 
-                    if not page_players:
-                        consecutive_empty += 1
-                    else:
-                        consecutive_empty = 0
-                        cat_players.extend(page_players)
-                        print(f"    Rank {rank_start:4d}: Scraped {len(page_players)} players ({page_players[0]['name']} #{page_players[0]['rank']} to {page_players[-1]['name']} #{page_players[-1]['rank']})")
+                            player_id = None
+                            link = name_cell.select_one("a[href*='playerId=']")
+                            if link:
+                                href = link.get("href", "")
+                                id_m = re.search(r"playerId=(\d+)", href)
+                                if id_m:
+                                    player_id = id_m.group(1)
 
-                    rank_start += 100
+                            row_key = player_id if player_id else f"{name.lower()}_{rank}"
+                            if row_key in seen_keys:
+                                continue
+                            seen_keys.add(row_key)
 
-                except Exception as ex:
-                    print(f"    Error scraping {tab_name} Rank={rank_start}: {ex}")
+                            page_players.append({
+                                "rank": rank,
+                                "name": name,
+                                "country": country,
+                                "points": pts,
+                                "wtt_player_id": player_id,
+                                "gender": gender_code,
+                                "gender_int": gender_int,
+                            })
+
+                        if page_players:
+                            break
+                        elif rank_start == 1:
+                            print(f"    Retry {attempt + 1}/3 for {tab_name} Rank={rank_start}...")
+                            page.wait_for_timeout(3000)
+
+                    except Exception as ex:
+                        print(f"    Error on attempt {attempt + 1} for {tab_name} Rank={rank_start}: {ex}")
+                        page.wait_for_timeout(3000)
+
+                if not page_players:
                     consecutive_empty += 1
-                    rank_start += 100
+                else:
+                    consecutive_empty = 0
+                    cat_players.extend(page_players)
+                    print(f"    Rank {rank_start:4d}: Scraped {len(page_players)} players ({page_players[0]['name']} #{page_players[0]['rank']} to {page_players[-1]['name']} #{page_players[-1]['rank']})")
+
+                rank_start += 100
 
             print(f"  ✅ Completed {tab_name}: {len(cat_players)} players scraped.")
             all_tt_players.extend(cat_players)
@@ -308,7 +328,13 @@ def persist_rankings_to_dbs(atp_players, wta_players, tt_players):
     print(f"\n[4/4] 💾 Persisting rankings to databases (SQLite & Neon) for snapshot {TARGET_DATE_STR}...")
 
     sconn = sqlite3.connect(SQLITE_PATH)
-    pconn = psycopg2.connect(REMOTE_DB_URL)
+    pconn = psycopg2.connect(
+        REMOTE_DB_URL,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=5
+    )
 
     try:
         _persist_tennis(sconn, pconn, atp_players, wta_players)
@@ -365,8 +391,15 @@ def _persist_tennis(sconn, pconn, atp_players, wta_players):
         t_lookup_by_name_g[(lf, g)].append(pid)
 
     used_tennis_pids = set()
+    scur.execute("SELECT COALESCE(MAX(id), 0) FROM tennis_players_historical")
+    max_s = scur.fetchone()[0]
+    pcur.execute("SELECT COALESCE(MAX(id), 0) FROM tennis_players_historical")
+    max_p = pcur.fetchone()[0]
+    next_pid = max(max_s, max_p)
+    new_tennis_players = []
 
     def resolve_tennis_hist_id(name, fn, ln, gender_int, country, dob_str):
+        nonlocal next_pid
         key_c = (name.lower(), gender_int, (country or '').upper())
         key = (name.lower(), gender_int)
 
@@ -396,21 +429,10 @@ def _persist_tennis(sconn, pconn, atp_players, wta_players):
             except Exception:
                 pass
 
-        # Create in SQLite
-        scur.execute("""
-            INSERT INTO tennis_players_historical (first_name, last_name, gender, country, birth_year, birth_month, birth_date, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (fn, ln, gender_int, country, by, bm, bd, datetime.now().isoformat()))
-        new_pid = scur.lastrowid
-        sconn.commit()
-
-        # Create in Neon
-        pcur.execute("""
-            INSERT INTO tennis_players_historical (id, first_name, last_name, gender, country, birth_year, birth_month, birth_date, last_updated)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            ON CONFLICT (id) DO UPDATE SET country = EXCLUDED.country
-        """, (new_pid, fn, ln, gender_int, country, by, bm, bd))
-        pconn.commit()
+        next_pid += 1
+        new_pid = next_pid
+        now_str = datetime.now().isoformat()
+        new_tennis_players.append((new_pid, fn, ln, gender_int, country, by, bm, bd, now_str))
 
         t_lookup_by_name_g[key].append(new_pid)
         t_lookup_by_name_g_c[key_c].append(new_pid)
@@ -437,6 +459,29 @@ def _persist_tennis(sconn, pconn, atp_players, wta_players):
         tennis_rankings.append((pid, p["points"], p["rank"], TARGET_YEAR, TARGET_MONTH, TARGET_DAY))
         active_tennis_updates.append((p["rank"], p["points"], p["country"], datetime.now().isoformat(), p["name"].lower(), "F"))
 
+    if new_tennis_players:
+        print(f"    Inserting {len(new_tennis_players)} new tennis historical players in batch...")
+        scur.executemany("""
+            INSERT INTO tennis_players_historical (id, first_name, last_name, gender, country, birth_year, birth_month, birth_date, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, new_tennis_players)
+        sconn.commit()
+
+        execute_batch(pcur, """
+            INSERT INTO tennis_players_historical (id, first_name, last_name, gender, country, birth_year, birth_month, birth_date, last_updated)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            ON CONFLICT (id) DO UPDATE SET country = EXCLUDED.country
+        """, [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]) for r in new_tennis_players])
+        pconn.commit()
+
+        pcur.execute("SELECT setval(pg_get_serial_sequence('tennis_players_historical', 'id'), COALESCE((SELECT MAX(id) FROM tennis_players_historical), 1))")
+        pconn.commit()
+
+    # Verify no duplicate player_ids in tennis_rankings
+    unique_tennis_pids = {r[0] for r in tennis_rankings}
+    if len(unique_tennis_pids) != len(tennis_rankings):
+        raise ValueError(f"CRITICAL: Found duplicate player IDs in Tennis rankings! {len(tennis_rankings)} total vs {len(unique_tennis_pids)} unique.")
+
     # Clean existing snapshot rows for this target date first
     print(f"    Cleaning existing Tennis rankings for {TARGET_DATE_STR}...")
     scur.execute("DELETE FROM tennis_rankings_historical WHERE ranking_year = ? AND ranking_month = ? AND ranking_date = ?", (TARGET_YEAR, TARGET_MONTH, TARGET_DAY))
@@ -455,6 +500,9 @@ def _persist_tennis(sconn, pconn, atp_players, wta_players):
     execute_batch(pcur, """
         INSERT INTO tennis_rankings_historical (player_id, points, rank, ranking_year, ranking_month, ranking_date)
         VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (player_id, ranking_year, ranking_month, ranking_date) DO UPDATE SET
+            points = EXCLUDED.points,
+            rank = EXCLUDED.rank
     """, tennis_rankings)
     pconn.commit()
 
@@ -573,8 +621,15 @@ def _persist_table_tennis(sconn, pconn, tt_players):
                 tt_lookup_by_photo_id[m.group(1)] = pid
 
     used_tt_pids = set()
+    scur.execute("SELECT COALESCE(MAX(id), 0) FROM tt_players_historical")
+    max_tt_s = scur.fetchone()[0]
+    pcur.execute("SELECT COALESCE(MAX(id), 0) FROM tt_players_historical")
+    max_tt_p = pcur.fetchone()[0]
+    next_tt_id = max(max_tt_s, max_tt_p)
+    new_tt_players = []
 
     def resolve_tt_hist_id(player):
+        nonlocal next_tt_id
         name = player["name"]
         g = player["gender_int"]
         c = player["country"]
@@ -634,19 +689,10 @@ def _persist_table_tennis(sconn, pconn, tt_players):
             by, bm, bd = 2009, 2, 8
             pic = "https://wttwebcmsprod.blob.core.windows.net/websitefiles/images/general/men_default_left.png"
 
-        scur.execute("""
-            INSERT INTO tt_players_historical (first_name, last_name, gender, country, birth_year, birth_month, birth_date, picture, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (fn, ln, g, c, by, bm, bd, pic, datetime.now().isoformat()))
-        new_id = scur.lastrowid
-        sconn.commit()
-
-        pcur.execute("""
-            INSERT INTO tt_players_historical (id, first_name, last_name, gender, country, birth_year, birth_month, birth_date, picture, last_updated)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-            ON CONFLICT (id) DO UPDATE SET country = EXCLUDED.country
-        """, (new_id, fn, ln, g, c, by, bm, bd, pic))
-        pconn.commit()
+        next_tt_id += 1
+        new_id = next_tt_id
+        now_str = datetime.now().isoformat()
+        new_tt_players.append((new_id, fn, ln, g, c, by, bm, bd, pic, now_str))
 
         tt_lookup_by_name_g[key].append(new_id)
         tt_lookup_by_name_g_c[key_c].append(new_id)
@@ -664,6 +710,24 @@ def _persist_table_tennis(sconn, pconn, tt_players):
         pid = resolve_tt_hist_id(p)
         tt_rankings.append((pid, p["points"], p["rank"], TARGET_YEAR, TARGET_MONTH, TARGET_DAY))
         active_tt_updates.append((pid, p["name"], p["country"], p["rank"], p["gender"], p.get("wtt_player_id")))
+
+    if new_tt_players:
+        print(f"    Inserting {len(new_tt_players)} new TT historical players in batch...")
+        scur.executemany("""
+            INSERT INTO tt_players_historical (id, first_name, last_name, gender, country, birth_year, birth_month, birth_date, picture, last_updated)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, new_tt_players)
+        sconn.commit()
+
+        execute_batch(pcur, """
+            INSERT INTO tt_players_historical (id, first_name, last_name, gender, country, birth_year, birth_month, birth_date, picture, last_updated)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+            ON CONFLICT (id) DO UPDATE SET country = EXCLUDED.country
+        """, [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8]) for r in new_tt_players])
+        pconn.commit()
+
+        pcur.execute("SELECT setval(pg_get_serial_sequence('tt_players_historical', 'id'), COALESCE((SELECT MAX(id) FROM tt_players_historical), 1))")
+        pconn.commit()
 
     # Verify no duplicate player_ids in tt_rankings
     unique_tt_pids = {r[0] for r in tt_rankings}
@@ -688,6 +752,9 @@ def _persist_table_tennis(sconn, pconn, tt_players):
     execute_batch(pcur, """
         INSERT INTO tt_rankings_historical (player_id, points, rank, ranking_year, ranking_month, ranking_date)
         VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (player_id, ranking_year, ranking_month, ranking_date) DO UPDATE SET
+            points = EXCLUDED.points,
+            rank = EXCLUDED.rank
     """, tt_rankings)
     pconn.commit()
 

@@ -9,6 +9,13 @@ import json
 import time
 from datetime import date, datetime
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # Paths
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '..'))
@@ -75,11 +82,31 @@ def export_all():
             TennisHistoricalRanking.ranking_date.asc()
         ).all()
 
-        # Build histories and career high records per player
+        # Build histories and career high records per player (preserving full historical depth)
+        tennis_hist_path = os.path.join(OUT_DIR, 'player_histories.json')
         tennis_histories = {}
+        if os.path.exists(tennis_hist_path):
+            try:
+                with open(tennis_hist_path, 'r', encoding='utf-8') as f:
+                    tennis_histories = json.load(f)
+            except Exception:
+                tennis_histories = {}
+
         career_high_map = {}
         latest_ranks_m = {}
         latest_ranks_f = {}
+
+        # Prepopulate career high map from existing full history
+        for spid, h_list in tennis_histories.items():
+            try:
+                ipid = int(spid)
+                for h in h_list:
+                    rnk = h.get("ranking")
+                    if rnk and rnk > 0:
+                        if ipid not in career_high_map or rnk < career_high_map[ipid]["rank"]:
+                            career_high_map[ipid] = {"rank": rnk, "date": h.get("date")}
+            except (ValueError, TypeError):
+                pass
 
         # Dynamically detect latest ranking date per gender
         latest_date_m = None
@@ -103,7 +130,8 @@ def export_all():
             if spid not in tennis_histories:
                 tennis_histories[spid] = []
             dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
-            tennis_histories[spid].append({"ranking": r.rank, "date": dt_str})
+            if not any(h.get('date') == dt_str for h in tennis_histories[spid]):
+                tennis_histories[spid].append({"ranking": r.rank, "date": dt_str})
 
             # Career high
             if r.rank > 0:
@@ -215,10 +243,31 @@ def export_all():
             TableTennisHistoricalRanking.ranking_date.asc()
         ).all()
 
+        # Build histories and career high records per player (preserving full historical depth)
+        tt_hist_path = os.path.join(OUT_DIR, 'tt_player_histories.json')
         tt_histories = {}
+        if os.path.exists(tt_hist_path):
+            try:
+                with open(tt_hist_path, 'r', encoding='utf-8') as f:
+                    tt_histories = json.load(f)
+            except Exception:
+                tt_histories = {}
+
         career_high_tt_map = {}
         latest_ranks_tt_m = {}
         latest_ranks_tt_f = {}
+
+        # Prepopulate career high map from existing full history
+        for spid, h_list in tt_histories.items():
+            try:
+                ipid = int(spid)
+                for h in h_list:
+                    rnk = h.get("ranking")
+                    if rnk and rnk > 0:
+                        if ipid not in career_high_tt_map or rnk < career_high_tt_map[ipid]["rank"]:
+                            career_high_tt_map[ipid] = {"rank": rnk, "date": h.get("date")}
+            except (ValueError, TypeError):
+                pass
 
         latest_tt_date_m = None
         latest_tt_date_f = None
@@ -241,7 +290,8 @@ def export_all():
             if spid not in tt_histories:
                 tt_histories[spid] = []
             dt_str = f"{r.ranking_year:04d}-{r.ranking_month:02d}-{r.ranking_date:02d}"
-            tt_histories[spid].append({"ranking": r.rank, "date": dt_str})
+            if not any(h.get('date') == dt_str for h in tt_histories[spid]):
+                tt_histories[spid].append({"ranking": r.rank, "date": dt_str})
 
             if r.rank > 0:
                 if r.player_id not in career_high_tt_map or r.rank < career_high_tt_map[r.player_id]["rank"]:
