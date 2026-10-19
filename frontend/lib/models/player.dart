@@ -5,6 +5,7 @@ class Player {
   final String name;
   final String? country;
   final int? ranking;
+  final int? points;
   final int? highestRanking;
   final DateTime? highestRankingDate;
   final DateTime? birthDate;
@@ -28,6 +29,7 @@ class Player {
     required this.name,
     this.country,
     this.ranking,
+    this.points,
     this.highestRanking,
     this.highestRankingDate,
     this.birthDate,
@@ -66,6 +68,7 @@ class Player {
       name: json['name'],
       country: json['country'],
       ranking: json['ranking'],
+      points: json['points'],
       highestRanking: json['highest_ranking'],
       highestRankingDate: json['highest_ranking_date'] != null
           ? DateTime.parse(json['highest_ranking_date'])

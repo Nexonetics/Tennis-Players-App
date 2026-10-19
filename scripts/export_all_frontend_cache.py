@@ -148,21 +148,21 @@ def export_all():
                 target_d = latest_date_m if hp.gender == 0 else latest_date_f
                 if d_tuple == target_d:
                     if hp.gender == 0:
-                        latest_ranks_m[hp.id] = (hp, r.rank)
+                        latest_ranks_m[hp.id] = (hp, r.rank, r.points or 0)
                     else:
-                        latest_ranks_f[hp.id] = (hp, r.rank)
+                        latest_ranks_f[hp.id] = (hp, r.rank, r.points or 0)
                 elif hp.id not in (latest_ranks_m if hp.gender == 0 else latest_ranks_f):
                     # Player not in latest snapshot date: assign unranked (9999)
                     if hp.gender == 0:
-                        latest_ranks_m[hp.id] = (hp, 9999)
+                        latest_ranks_m[hp.id] = (hp, 9999, 0)
                     else:
-                        latest_ranks_f[hp.id] = (hp, 9999)
+                        latest_ranks_f[hp.id] = (hp, 9999, 0)
 
         # Build tennis player export list
         tennis_players_export = []
         for gender_name, player_dict in [("M", latest_ranks_m), ("F", latest_ranks_f)]:
             sorted_tuples = sorted(player_dict.values(), key=lambda x: (x[1] if x[1] else 99999, x[0].id))
-            for hp, cur_rank in sorted_tuples:
+            for hp, cur_rank, cur_pts in sorted_tuples:
                 full_name = f"{hp.first_name} {hp.last_name}".strip()
                 old_p = legacy_tennis_by_id.get(hp.id) or legacy_tennis_map.get(full_name.lower())
 
@@ -200,6 +200,7 @@ def export_all():
                     "name": full_name,
                     "country": hp.country,
                     "ranking": cur_rank,
+                    "points": cur_pts,
                     "highest_ranking": career_high_rank,
                     "highest_ranking_date": career_high_date,
                     "career_high_rank": career_high_rank,
@@ -307,19 +308,19 @@ def export_all():
                 target_d = latest_tt_date_m if hp.gender == 0 else latest_tt_date_f
                 if d_tuple == target_d:
                     if hp.gender == 0:
-                        latest_ranks_tt_m[hp.id] = (hp, r.rank)
+                        latest_ranks_tt_m[hp.id] = (hp, r.rank, r.points or 0)
                     else:
-                        latest_ranks_tt_f[hp.id] = (hp, r.rank)
+                        latest_ranks_tt_f[hp.id] = (hp, r.rank, r.points or 0)
                 elif hp.id not in (latest_ranks_tt_m if hp.gender == 0 else latest_ranks_tt_f):
                     if hp.gender == 0:
-                        latest_ranks_tt_m[hp.id] = (hp, 9999)
+                        latest_ranks_tt_m[hp.id] = (hp, 9999, 0)
                     else:
-                        latest_ranks_tt_f[hp.id] = (hp, 9999)
+                        latest_ranks_tt_f[hp.id] = (hp, 9999, 0)
 
         tt_players_export = []
         for gender_name, player_dict in [("M", latest_ranks_tt_m), ("F", latest_ranks_tt_f)]:
             sorted_tuples = sorted(player_dict.values(), key=lambda x: (x[1] if x[1] else 99999, x[0].id))
-            for hp, cur_rank in sorted_tuples:
+            for hp, cur_rank, cur_pts in sorted_tuples:
                 full_name = f"{hp.first_name} {hp.last_name}".strip()
                 old_p = legacy_tt_by_id.get(hp.id) or legacy_tt_map.get(full_name.lower())
 
@@ -339,6 +340,7 @@ def export_all():
                     "name": full_name,
                     "country": hp.country,
                     "ranking": cur_rank,
+                    "points": cur_pts,
                     "highest_ranking": career_high_rank,
                     "highest_ranking_date": career_high_date,
                     "career_high_rank": career_high_rank,

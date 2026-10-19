@@ -68,6 +68,9 @@ def pick_best_player(p1, p2):
     if merged.get('win_percentage') is None and secondary.get('win_percentage') is not None:
         merged['win_percentage'] = secondary['win_percentage']
 
+    if (merged.get('points') is None or merged.get('points') == 0) and secondary.get('points'):
+        merged['points'] = secondary['points']
+
     # Career high rank logic
     ch1 = primary.get('career_high_rank') or primary.get('highest_ranking') or 9999
     ch2 = secondary.get('career_high_rank') or secondary.get('highest_ranking') or 9999
