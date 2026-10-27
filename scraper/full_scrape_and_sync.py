@@ -38,7 +38,7 @@ WEB_OUT_DATA_DIR = os.path.join(BASE_DIR, "web", "out", "data", "json")
 
 TARGET_YEAR = 2026
 TARGET_MONTH = 10
-TARGET_DAY = 19
+TARGET_DAY = 26
 TARGET_DATE_STR = f"{TARGET_YEAR}-{TARGET_MONTH:02d}-{TARGET_DAY:02d}"
 CACHE_FILE = os.path.join(BASE_DIR, "scratch", f"scraped_{TARGET_YEAR}{TARGET_MONTH:02d}{TARGET_DAY:02d}_data.json")
 
@@ -793,14 +793,14 @@ def _persist_table_tennis(sconn, pconn, tt_players):
     # Ensure all 3 Lee Daeuns specifically exist with exact rankings, birth dates, and images
     pid_to_rank = {r[0]: r[2] for r in tt_rankings}
     ld_3_records = [
-        (14373, pid_to_rank.get(14373, 133), date(2005, 3, 20), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/135391_HEADSHOT_R_LEE_Daeun.png"),
-        (3341, pid_to_rank.get(3341, 232), date(2002, 12, 30), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/132702_HEADSHOT_R_LEE_Daeun.png")
+        (14373, pid_to_rank.get(14373, 105), date(2005, 3, 20), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/135391_HEADSHOT_R_LEE_Daeun.png"),
+        (3341, pid_to_rank.get(3341, 231), date(2002, 12, 30), "https://wttsimfiles.blob.core.windows.net/wtt-media/photos/400px/132702_HEADSHOT_R_LEE_Daeun.png")
     ]
     # Check if 3rd Lee Daeun exists
     scur.execute("SELECT id FROM tt_players_historical WHERE (birth_year=2009 AND birth_month=2 AND birth_date=8) OR picture LIKE '%213349%' OR id = 14835")
     r3 = scur.fetchone()
     if r3:
-        ld_3_records.append((r3[0], pid_to_rank.get(r3[0], 953), date(2009, 2, 8), "https://wttwebcmsprod.blob.core.windows.net/websitefiles/images/general/men_default_left.png"))
+        ld_3_records.append((r3[0], pid_to_rank.get(r3[0], 962), date(2009, 2, 8), "https://wttwebcmsprod.blob.core.windows.net/websitefiles/images/general/men_default_left.png"))
 
     for pid, rnk, b_date, pic in ld_3_records:
         for conn_type, c, p_obj in [("SQLite", scur, sconn), ("Neon", pcur, pconn)]:
