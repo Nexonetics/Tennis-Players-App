@@ -38,7 +38,7 @@ WEB_OUT_DATA_DIR = os.path.join(BASE_DIR, "web", "out", "data", "json")
 
 TARGET_YEAR = 2026
 TARGET_MONTH = 11
-TARGET_DAY = 2
+TARGET_DAY = 9
 TARGET_DATE_STR = f"{TARGET_YEAR}-{TARGET_MONTH:02d}-{TARGET_DAY:02d}"
 CACHE_FILE = os.path.join(BASE_DIR, "scratch", f"scraped_{TARGET_YEAR}{TARGET_MONTH:02d}{TARGET_DAY:02d}_data.json")
 
