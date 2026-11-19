@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { Trophy, Search, ArrowLeftRight } from 'lucide-react';
+import { Trophy, Search, ArrowLeftRight, BadgeDollarSign } from 'lucide-react';
 import { SportsSearchLogo } from '../ui/SportsSearchLogo';
 import { getAssetUrl } from '@/lib/getAssetUrl';
 import { useSports } from '@/context/SportsContext';
@@ -20,6 +20,7 @@ const navItems: NavItem[] = [
   { id: 'rankings', label: 'Rankings', href: '/rankings', icon: Trophy },
   { id: 'search', label: 'Search', href: '/search', icon: Search },
   { id: 'compare', label: 'Compare', href: '/compare', icon: ArrowLeftRight },
+  { id: 'college-basketball', label: 'College Odds', href: '/college-basketball', icon: BadgeDollarSign },
 ];
 
 export const Sidebar: React.FC = () => {

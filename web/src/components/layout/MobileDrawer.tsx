@@ -4,7 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
-import { X, Trophy, Search, ArrowLeftRight, Home, ChevronRight, User } from 'lucide-react';
+import { X, Trophy, Search, ArrowLeftRight, Home, ChevronRight, User, BadgeDollarSign } from 'lucide-react';
 import { SportsSearchLogo } from '../ui/SportsSearchLogo';
 import { currentUser, sportCategories } from '@/data/dummyData';
 import { getAssetUrl } from '@/lib/getAssetUrl';
@@ -38,6 +38,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
     { id: 'rankings', label: 'World Rankings', href: '/rankings', icon: Trophy },
     { id: 'search', label: 'Search Athletes', href: '/search', icon: Search },
     { id: 'compare', label: 'Compare Players', href: '/compare', icon: ArrowLeftRight },
+    { id: 'college-basketball', label: 'College Basketball Odds', href: '/college-basketball', icon: BadgeDollarSign },
   ];
 
   return (

@@ -1,0 +1,68 @@
+name: College Basketball Odds (daily)
+
+# Pulls NCAA men's + women's odds (The Odds API) and team records (ESPN) once a day,
+# commits the cached JSON, and redeploys the site. The site only reads that cached
+# file, so visitors never call the Odds API. ~6 credits/day of the 500/month free plan.
+#
+# Setup: add the repo secret ODDS_API_KEY (Settings -> Secrets and variables -> Actions).
+# Scheduled runs only fire from the default branch (main).
+
+on:
+  schedule:
+    # 14:00 UTC = 9-10am US Eastern: that day's lines are posted, before any tip-off.
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Pull even if today's odds are already cached (spends credits)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # commit the refreshed cache
+  actions: write    # start the deploy workflow
+
+concurrency:
+  group: college-basketball-odds-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pull:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv
+
+      - name: Pull odds and records (skipped if the cache is under 20h old)
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        run: python3 scraper/college_basketball_odds.py ${{ inputs.force && '--force' || '' }}
+
+      - name: Commit cache
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/src/data/json/college_basketball.json
+          if git diff --cached --quiet; then
+            echo "No new data; nothing to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git commit -m "chore(odds): daily college basketball odds and records ($(date -u +%F))"
+          git pull --rebase origin "${{ github.ref_name }}"
+          git push origin "HEAD:${{ github.ref_name }}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # Pushes made with GITHUB_TOKEN don't trigger other workflows, so start the deploy explicitly.
+      - name: Redeploy site
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --ref "${{ github.ref_name }}"

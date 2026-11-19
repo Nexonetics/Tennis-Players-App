@@ -174,3 +174,92 @@ export interface UnifiedAthlete {
   points?: string;
   extraInfo?: Record<string, any>;
 }
+
+// College basketball betting data (scraper/college_basketball_odds.py -> college_basketball.json)
+
+export interface CbbTeam {
+  id: string;
+  name: string;
+  short_name: string;
+  location: string;
+  mascot: string;
+  abbreviation: string;
+  conference: string;
+  logo: string | null;
+  wins: number;
+  losses: number;
+  win_pct: number | null;
+  record: string | null;
+  home_record: string | null;
+  away_record: string | null;
+  conference_record: string | null;
+  vs_ap_top25: string | null;
+  streak: string | null;
+  ppg: number | null;
+  opp_ppg: number | null;
+  point_diff: number | null;
+}
+
+export interface CbbGameSide {
+  name: string;
+  team_id: string | null;
+  short_name?: string;
+  logo?: string | null;
+  conference?: string;
+  record?: string | null;
+  venue_record?: string | null;
+  conference_record?: string | null;
+  streak?: string | null;
+  ppg?: number | null;
+  opp_ppg?: number | null;
+}
+
+export interface CbbPrice {
+  point: number | null;
+  price: number;
+}
+
+export interface CbbBookLine {
+  key: string;
+  title: string;
+  last_update: string | null;
+  moneyline?: { home: number; away: number };
+  spread?: { home: CbbPrice; away: CbbPrice };
+  total?: { over: CbbPrice; under: CbbPrice };
+}
+
+export interface CbbGame {
+  id: string;
+  commence_time: string;
+  home: CbbGameSide;
+  away: CbbGameSide;
+  best_moneyline: {
+    home: { price: number; book: string } | null;
+    away: { price: number; book: string } | null;
+  };
+  fair_win_prob: { home: number; away: number } | null;
+  consensus_spread: { home: number; away: number } | null;
+  consensus_total: number | null;
+  books: CbbBookLine[];
+}
+
+export interface CbbLeague {
+  title: string;
+  season: string | null;
+  odds_sport_key: string;
+  records_updated_at: string;
+  odds_updated_at: string | null;
+  odds_status: 'ok' | 'inactive' | 'not_fetched';
+  games: CbbGame[];
+  unmatched_teams: string[];
+  teams: CbbTeam[];
+}
+
+export interface CollegeBasketballData {
+  generated_at: string;
+  sources: { odds: string; records: string };
+  regions: string;
+  markets: string[];
+  leagues: { men?: CbbLeague; women?: CbbLeague };
+  odds_api_credits?: { remaining: number | null; used: number | null };
+}

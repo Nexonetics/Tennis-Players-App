@@ -7,6 +7,7 @@ on:
       - feature/**
       - feat/**
       - fix/**
+  workflow_dispatch: # lets college_basketball_odds.yml redeploy after refreshing its cache
 
 permissions:
   contents: write

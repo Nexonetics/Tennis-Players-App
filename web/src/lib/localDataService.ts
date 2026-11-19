@@ -5,6 +5,7 @@ import {
   BasketballClub,
   UnifiedAthlete,
   HistoryPoint,
+  CollegeBasketballData,
 } from '@/types';
 
 // In-memory cache for raw parsed JSON data
@@ -563,3 +564,7 @@ export async function getUniqueCountries(
   return Array.from(countrySet).sort();
 }
 
+export async function getCollegeBasketball(): Promise<CollegeBasketballData | null> {
+  const data = await getJsonData<CollegeBasketballData>('college_basketball.json');
+  return data && !Array.isArray(data) && data.leagues ? data : null;
+}
