@@ -32,6 +32,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import statistics
 import sys
 from datetime import datetime, timezone
@@ -42,6 +43,10 @@ from dotenv import load_dotenv
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 DEFAULT_OUT = os.path.join(PROJECT_ROOT, "web", "src", "data", "json", "college_basketball.json")
+# `npm run dev` serves web/public/data/json, copied from src only when the dev server
+# starts (web/scripts/copy-data.js). Keep that copy in sync so a running dev server
+# shows fresh data without a restart.
+PUBLIC_COPY = os.path.join(PROJECT_ROOT, "web", "public", "data", "json", "college_basketball.json")
 
 ODDS_API_BASE = "https://api.the-odds-api.com/v4"
 ESPN_STANDINGS_URL = "https://site.api.espn.com/apis/v2/sports/basketball/{slug}/standings"
@@ -62,7 +67,11 @@ LEAGUES = {
 
 # Odds API name -> ESPN team id, for names the automatic matcher can't resolve.
 # Add entries here when a run reports "unmatched teams".
-TEAM_ALIASES: dict[str, str] = {}
+TEAM_ALIASES: dict[str, str] = {
+    "Appalachian St Mountaineers": "2026",  # ESPN: App State Mountaineers
+    "IUPUI Jaguars": "85",                  # renamed IU Indianapolis
+    "Long Beach St 49ers": "299",           # ESPN: Long Beach State Beach
+}
 
 log = logging.getLogger("college_basketball")
 
@@ -372,6 +381,17 @@ def write_atomic(path: str, payload: dict) -> None:
     os.replace(tmp, path)
 
 
+def sync_public_copy(out: str) -> None:
+    if os.path.abspath(out) != DEFAULT_OUT or not os.path.isfile(out):
+        return
+    if not os.path.isdir(os.path.join(PROJECT_ROOT, "web", "public")):
+        return
+    os.makedirs(os.path.dirname(PUBLIC_COPY), exist_ok=True)
+    tmp = f"{PUBLIC_COPY}.tmp"
+    shutil.copyfile(out, tmp)
+    os.replace(tmp, PUBLIC_COPY)
+
+
 def hours_since(iso: str | None) -> float | None:
     if not iso:
         return None
@@ -407,6 +427,7 @@ def run(args: argparse.Namespace) -> int:
             "Skipped: 0 credits spent. Use --force to pull anyway.",
             age, last_pull, args.max_age_hours,
         )
+        sync_public_copy(args.out)
         return 0
 
     client = None
@@ -484,6 +505,7 @@ def run(args: argparse.Namespace) -> int:
         payload["odds_api_credits"] = previous["odds_api_credits"]
 
     write_atomic(args.out, payload)
+    sync_public_copy(args.out)
     log.info("Wrote %s", os.path.relpath(args.out, PROJECT_ROOT))
     return 0
 
