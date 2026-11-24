@@ -12,7 +12,7 @@ export const LayoutShell: React.FC<{ children: React.ReactNode }> = ({ children 
 
   return (
     <SportsProvider>
-      <div className="flex flex-col md:flex-row min-h-screen md:h-screen bg-[#F8FAFC]">
+      <div className="flex flex-col md:flex-row min-h-dvh md:h-screen bg-[#F8FAFC]">
         {/* Left Navigation Sidebar (Desktop view) */}
         <Sidebar />
 
@@ -21,11 +21,11 @@ export const LayoutShell: React.FC<{ children: React.ReactNode }> = ({ children 
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col min-w-0 h-full">
-          {/* Top Header */}
-          <Header onOpenDrawer={() => setIsDrawerOpen(true)} />
+          {/* Top Header (sticky on mobile) */}
+          <Header />
 
-          {/* Dashboard Body */}
-          <main className="flex-1 px-4 sm:px-6 md:px-8 pb-24 md:pb-8 flex flex-col gap-5 overflow-y-auto">
+          {/* Dashboard Body — bottom padding clears the fixed mobile nav + home indicator */}
+          <main className="flex-1 px-4 sm:px-6 md:px-8 pt-3 md:pt-0 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8 flex flex-col gap-5 overflow-y-auto">
             {children}
           </main>
         </div>
@@ -36,4 +36,3 @@ export const LayoutShell: React.FC<{ children: React.ReactNode }> = ({ children 
     </SportsProvider>
   );
 };
-

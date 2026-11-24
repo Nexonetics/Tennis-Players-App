@@ -144,7 +144,7 @@ function BooksTable({ game }: { game: CbbGame }) {
       <table className="w-full text-xs sm:text-sm min-w-[560px]">
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-slate-400 text-left">
-            <th className="py-2 pr-3 font-bold">Sportsbook</th>
+            <th className="py-2 pr-3 font-bold sticky left-0 z-10 bg-white">Sportsbook</th>
             <th className="py-2 px-2 font-bold text-center">{away} ML</th>
             <th className="py-2 px-2 font-bold text-center">{home} ML</th>
             <th className="py-2 px-2 font-bold text-center">{away} spread</th>
@@ -155,7 +155,9 @@ function BooksTable({ game }: { game: CbbGame }) {
         <tbody className="divide-y divide-slate-100">
           {game.books.map((b) => (
             <tr key={b.key} className="text-slate-700">
-              <td className="py-2 pr-3 font-semibold text-slate-900 whitespace-nowrap">{b.title}</td>
+              <td className="py-2 pr-3 font-semibold text-slate-900 whitespace-nowrap sticky left-0 z-10 bg-white shadow-[6px_0_6px_-6px_rgba(15,23,42,0.12)] sm:shadow-none">
+                {b.title}
+              </td>
               <td className={`py-2 px-2 text-center ${b.moneyline?.away === bestAway ? 'font-extrabold text-emerald-700' : ''}`}>
                 {formatOdds(b.moneyline?.away)}
               </td>
@@ -187,12 +189,14 @@ function GameCard({ game, now }: { game: CbbGame; now: number }) {
 
   return (
     <div className="bg-white border border-slate-100 rounded-3xl p-4 sm:p-5 shadow-xs">
-      <div className="flex items-center justify-between gap-3 mb-1">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-          <Clock className="w-3.5 h-3.5" />
-          {formatTipoff(game.commence_time)}
+      <div className="flex items-start sm:items-center justify-between gap-3 mb-1">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 min-w-0 text-xs font-semibold text-slate-500">
+          <span className="flex items-center gap-1.5 whitespace-nowrap">
+            <Clock className="w-3.5 h-3.5 shrink-0" />
+            {formatTipoff(game.commence_time)}
+          </span>
           {started && (
-            <span className="ml-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+            <span className="w-fit text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 whitespace-nowrap">
               Started · pre-game lines
             </span>
           )}
@@ -232,7 +236,8 @@ function GameCard({ game, now }: { game: CbbGame; now: number }) {
         <>
           <button
             onClick={() => setShowBooks((v) => !v)}
-            className="mt-2 flex items-center gap-1 text-xs font-bold text-[#FA2E72] hover:text-[#E02263] cursor-pointer"
+            aria-expanded={showBooks}
+            className="mt-2 -ml-1 flex items-center gap-1 py-1.5 px-1 rounded-lg text-xs font-bold text-[#FA2E72] hover:text-[#E02263] active:bg-pink-50 cursor-pointer"
           >
             {showBooks ? 'Hide' : 'Compare'} {game.books.length} sportsbooks
             <ChevronDown className={`w-4 h-4 transition-transform ${showBooks ? 'rotate-180' : ''}`} />
@@ -308,7 +313,7 @@ function StandingsView({ league }: { league: CbbLeague }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-        <label className="flex-1 flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2 shadow-xs">
+        <label className="flex-1 flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-2.5 sm:py-2 shadow-xs focus-within:border-[#FA2E72]/50 focus-within:ring-2 focus-within:ring-[#FA2E72]/15">
           <Search className="w-4 h-4 text-slate-400" />
           <input
             value={query}
@@ -317,7 +322,8 @@ function StandingsView({ league }: { league: CbbLeague }) {
               setLimit(STANDINGS_PAGE_SIZE);
             }}
             placeholder="Search team or conference"
-            className="flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400 min-w-0"
+            enterKeyHint="search"
+            className="flex-1 bg-transparent text-base sm:text-sm outline-none placeholder:text-slate-400 min-w-0"
           />
         </label>
         <select
@@ -326,7 +332,7 @@ function StandingsView({ league }: { league: CbbLeague }) {
             setConference(e.target.value);
             setLimit(STANDINGS_PAGE_SIZE);
           }}
-          className="bg-white border border-slate-200 rounded-full px-4 py-2 text-sm font-semibold text-slate-700 shadow-xs cursor-pointer"
+          className="bg-white border border-slate-200 rounded-full px-4 py-2.5 sm:py-2 text-base sm:text-sm font-semibold text-slate-700 shadow-xs cursor-pointer"
         >
           {conferences.map((c) => (
             <option key={c} value={c}>
@@ -338,11 +344,11 @@ function StandingsView({ league }: { league: CbbLeague }) {
 
       <div className="bg-white border border-slate-100 rounded-3xl shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[720px]">
+          <table className="w-full text-sm min-w-[680px] sm:min-w-[720px]">
             <thead className="bg-slate-50/80">
               <tr className="text-[10px] uppercase tracking-wider text-slate-400 text-left">
-                <th className="py-3 pl-4 pr-2 font-bold w-10">#</th>
-                <th className="py-3 px-2 font-bold">Team</th>
+                <th className="py-3 pl-4 pr-2 font-bold w-12 min-w-12 sticky left-0 z-10 bg-slate-50">#</th>
+                <th className="py-3 px-2 font-bold sticky left-12 z-10 bg-slate-50">Team</th>
                 <th className="py-3 px-2 font-bold text-center">W-L</th>
                 <th className="py-3 px-2 font-bold text-center">Win %</th>
                 <th className="py-3 px-2 font-bold text-center">Home</th>
@@ -355,14 +361,16 @@ function StandingsView({ league }: { league: CbbLeague }) {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.slice(0, limit).map((t, i) => (
-                <tr key={t.id} className="text-slate-700 hover:bg-slate-50/60">
-                  <td className="py-2.5 pl-4 pr-2 text-xs font-bold text-slate-400">{i + 1}</td>
-                  <td className="py-2.5 px-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                <tr key={t.id} className="group text-slate-700 hover:bg-slate-50/60">
+                  <td className="py-2.5 pl-4 pr-2 w-12 min-w-12 text-xs font-bold text-slate-400 sticky left-0 z-10 bg-white group-hover:bg-slate-50">
+                    {i + 1}
+                  </td>
+                  <td className="py-2.5 px-2 sticky left-12 z-10 bg-white group-hover:bg-slate-50 shadow-[6px_0_6px_-6px_rgba(15,23,42,0.12)] sm:shadow-none">
+                    <div className="flex items-center gap-2.5 min-w-0 w-[9.5rem] sm:w-auto">
                       <TeamLogo src={t.logo} name={t.short_name || t.name} size={28} />
                       <div className="min-w-0">
                         <div className="font-bold text-slate-900 truncate">{t.name}</div>
-                        <div className="text-[11px] text-slate-400 font-medium">{t.conference}</div>
+                        <div className="text-[11px] text-slate-400 font-medium truncate">{t.conference}</div>
                       </div>
                     </div>
                   </td>
@@ -449,7 +457,7 @@ export default function CollegeBasketballPage() {
             <button
               key={value}
               onClick={() => setTab(value)}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 tab === value ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -462,7 +470,7 @@ export default function CollegeBasketballPage() {
             <button
               key={g}
               onClick={() => setGender(g)}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
                 gender === g ? 'bg-[#E02263] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
               }`}
             >

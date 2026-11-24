@@ -5,62 +5,76 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Home, Trophy, Search, ArrowLeftRight, Menu } from 'lucide-react';
 import { useSports } from '@/context/SportsContext';
+import { isActivePath } from '@/lib/nav';
 
 interface MobileNavProps {
   onOpenDrawer: () => void;
 }
 
+const navItems = [
+  { id: 'home', label: 'Home', href: '/', icon: Home },
+  { id: 'rankings', label: 'Rankings', href: '/rankings', icon: Trophy },
+  { id: 'search', label: 'Search', href: '/search', icon: Search },
+  { id: 'compare', label: 'Compare', href: '/compare', icon: ArrowLeftRight },
+];
+
 export const MobileNav: React.FC<MobileNavProps> = ({ onOpenDrawer }) => {
-  const pathname = usePathname() || '/';
+  const pathname = usePathname();
   const { getNavHref } = useSports();
 
-  const navItems = [
-    { id: 'home', label: 'Home', href: '/', icon: Home },
-    { id: 'rankings', label: 'Rankings', href: '/rankings', icon: Trophy },
-    { id: 'search', label: 'Search', href: '/search', icon: Search },
-    { id: 'compare', label: 'Compare', href: '/compare', icon: ArrowLeftRight },
-  ];
-
   return (
-    <nav aria-label="Mobile Navigation" className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-1.5 flex items-center justify-around shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-      {navItems.map((item) => {
-        const Icon = item.icon;
-        const isActive =
-          pathname === item.href ||
-          (item.href !== '/' && pathname.startsWith(item.href));
-        const targetHref = getNavHref(item.href);
+    <nav
+      aria-label="Mobile Navigation"
+      className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/90 backdrop-blur-lg border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]"
+    >
+      <div className="flex items-stretch justify-around px-1">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = isActivePath(pathname, item.href);
+          const targetHref = getNavHref(item.href);
 
-        return (
-          <Link
-            key={item.id}
-            href={targetHref}
-            className={`flex flex-col items-center justify-center py-1 px-3 rounded-2xl min-w-[60px] transition-all cursor-pointer active:scale-95 ${
-              isActive ? 'text-[#FA2E72] font-bold' : 'text-slate-500 hover:text-slate-800 font-medium'
-            }`}
-          >
-            <div
-              className={`p-1.5 rounded-full transition-all ${
-                isActive ? 'bg-[#FDF2F4] text-[#FA2E72]' : 'text-slate-400'
+          return (
+            <Link
+              key={item.id}
+              href={targetHref}
+              aria-current={isActive ? 'page' : undefined}
+              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-14 transition-colors cursor-pointer active:scale-95 ${
+                isActive ? 'text-[#FA2E72]' : 'text-slate-500 active:text-slate-800'
               }`}
             >
-              <Icon className="w-5 h-5" strokeWidth={isActive ? 2.4 : 1.8} />
-            </div>
-            <span className="text-[10px] mt-0.5 tracking-tight">{item.label}</span>
-          </Link>
-        );
-      })}
+              {/* Active indicator bar */}
+              <span
+                className={`absolute top-0 h-[3px] w-8 rounded-b-full bg-[#FA2E72] transition-opacity ${
+                  isActive ? 'opacity-100' : 'opacity-0'
+                }`}
+              />
+              <span
+                className={`flex items-center justify-center w-12 h-7 rounded-full transition-colors ${
+                  isActive ? 'bg-[#FDF2F4]' : ''
+                }`}
+              >
+                <Icon className="w-5 h-5" strokeWidth={isActive ? 2.4 : 1.8} />
+              </span>
+              <span className={`text-[11px] tracking-tight ${isActive ? 'font-bold' : 'font-medium'}`}>
+                {item.label}
+              </span>
+            </Link>
+          );
+        })}
 
-      {/* Menu Drawer Button */}
-      <button
-        type="button"
-        onClick={onOpenDrawer}
-        className="flex flex-col items-center justify-center py-1 px-3 rounded-2xl min-w-[60px] text-slate-500 hover:text-slate-800 font-medium transition-all cursor-pointer active:scale-95"
-      >
-        <div className="p-1.5 rounded-full text-slate-400 hover:bg-slate-100">
-          <Menu className="w-5 h-5" strokeWidth={1.8} />
-        </div>
-        <span className="text-[10px] mt-0.5 tracking-tight">Menu</span>
-      </button>
+        {/* Menu Drawer Button */}
+        <button
+          type="button"
+          onClick={onOpenDrawer}
+          aria-label="Open menu"
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 pt-2 pb-1.5 min-h-14 text-slate-500 active:text-slate-800 transition-colors cursor-pointer active:scale-95"
+        >
+          <span className="flex items-center justify-center w-12 h-7 rounded-full">
+            <Menu className="w-5 h-5" strokeWidth={1.8} />
+          </span>
+          <span className="text-[11px] font-medium tracking-tight">Menu</span>
+        </button>
+      </div>
     </nav>
   );
 };

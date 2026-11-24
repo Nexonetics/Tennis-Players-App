@@ -1,9 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useSearchParams, usePathname, useRouter } from 'next/navigation';
+import React, { createContext, useContext, useEffect, useCallback, useSyncExternalStore } from 'react';
+import { useSearchParams, usePathname } from 'next/navigation';
+import { Sport, parseSport } from '@/lib/sports';
+import { normalizePath } from '@/lib/nav';
 
-export type SportType = 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball';
+export type SportType = Sport;
 export type GenderType = 'Men' | 'Women';
 
 interface SportsContextType {
@@ -19,14 +21,10 @@ const SportsContext = createContext<SportsContextType | undefined>(undefined);
 
 const LOCAL_STORAGE_SPORT = 'sports_app_active_sport';
 const LOCAL_STORAGE_GENDER = 'sports_app_active_gender';
+const STORAGE_CHANGE_EVENT = 'sports-app-storage-change';
 
-const VALID_SPORTS: SportType[] = ['Tennis', 'Table Tennis', 'Football', 'Basketball'];
-
-function parseSport(val: string | null): SportType | null {
-  if (!val) return null;
-  const match = VALID_SPORTS.find((s) => s.toLowerCase() === val.toLowerCase());
-  return match || null;
-}
+/** Pages whose URL always mirrors the active sport/gender (so links and refreshes keep them). */
+const URL_SYNCED_PATHS = ['/rankings', '/search', '/compare'];
 
 function parseGender(val: string | null): GenderType | null {
   if (!val) return null;
@@ -36,86 +34,88 @@ function parseGender(val: string | null): GenderType | null {
   return null;
 }
 
+// --- localStorage as an external store (safe for static pre-rendering + hydration) ---
+
+function readStorage(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string) {
+  try {
+    if (window.localStorage.getItem(key) === value) return;
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Storage can be unavailable (private mode, blocked cookies) — preferences just won't persist.
+  }
+  window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
+}
+
+function subscribeToStorage(onChange: () => void) {
+  window.addEventListener('storage', onChange);
+  window.addEventListener(STORAGE_CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener(STORAGE_CHANGE_EVENT, onChange);
+  };
+}
+
+const getStoredSport = () => parseSport(readStorage(LOCAL_STORAGE_SPORT));
+const getStoredGender = () => parseGender(readStorage(LOCAL_STORAGE_GENDER));
+const getServerSnapshot = () => null;
+
 export const SportsProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const router = useRouter();
 
-  // Initialize state from URL searchParams (SSR & Client safe)
-  const initialUrlSport = parseSport(searchParams.get('sport'));
-  const initialUrlGender = parseGender(searchParams.get('gender') || searchParams.get('category'));
+  const urlSport = parseSport(searchParams.get('sport'));
+  const urlGender = parseGender(searchParams.get('gender') || searchParams.get('category'));
+  const storedSport = useSyncExternalStore(subscribeToStorage, getStoredSport, getServerSnapshot);
+  const storedGender = useSyncExternalStore(subscribeToStorage, getStoredGender, getServerSnapshot);
 
-  const [sport, setSportState] = useState<SportType>(initialUrlSport || 'Tennis');
-  const [gender, setGenderState] = useState<GenderType>(initialUrlGender || 'Men');
+  // The URL wins (shared links), then the remembered preference, then defaults.
+  const sport: SportType = urlSport ?? storedSport ?? 'Tennis';
+  const gender: GenderType = urlGender ?? storedGender ?? 'Men';
 
-  // On client mount, if URL has no sport/gender parameters, fall back to localStorage
+  // Remember sport/gender that arrive via the URL.
   useEffect(() => {
-    const urlSport = parseSport(searchParams.get('sport'));
-    const urlGender = parseGender(searchParams.get('gender') || searchParams.get('category'));
+    if (urlSport) writeStorage(LOCAL_STORAGE_SPORT, urlSport);
+    if (urlGender) writeStorage(LOCAL_STORAGE_GENDER, urlGender);
+  }, [urlSport, urlGender]);
 
-    if (urlSport) {
-      setSportState(urlSport);
-      localStorage.setItem(LOCAL_STORAGE_SPORT, urlSport);
-    } else {
-      const savedSport = parseSport(localStorage.getItem(LOCAL_STORAGE_SPORT));
-      if (savedSport) setSportState(savedSport);
-    }
-
-    if (urlGender) {
-      setGenderState(urlGender);
-      localStorage.setItem(LOCAL_STORAGE_GENDER, urlGender);
-    } else {
-      const savedGender = parseGender(localStorage.getItem(LOCAL_STORAGE_GENDER));
-      if (savedGender) setGenderState(savedGender);
-    }
-  }, [searchParams]);
-
-  // Synchronize state, localStorage, and browser URL search parameters
   const updateSportAndGender = useCallback(
     (newSport: SportType, newGender: GenderType) => {
-      setSportState(newSport);
-      setGenderState(newGender);
+      writeStorage(LOCAL_STORAGE_SPORT, newSport);
+      writeStorage(LOCAL_STORAGE_GENDER, newGender);
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(LOCAL_STORAGE_SPORT, newSport);
-        localStorage.setItem(LOCAL_STORAGE_GENDER, newGender);
+      // Keep the URL in step wherever it carries (or should carry) the selection;
+      // otherwise a stale ?sport= in the URL would override the new choice.
+      const url = new URL(window.location.href);
+      const currentPath = normalizePath(pathname || url.pathname);
+      const urlHasSelection =
+        url.searchParams.has('sport') || url.searchParams.has('gender') || url.searchParams.has('category');
 
-        const currentPath = pathname || window.location.pathname;
-        if (['/rankings', '/search', '/compare'].includes(currentPath)) {
-          const url = new URL(window.location.href);
-          url.searchParams.set('sport', newSport);
-          url.searchParams.set('gender', newGender);
-          window.history.replaceState(null, '', url.toString());
-          try {
-            router.replace(url.toString(), { scroll: false });
-          } catch (e) {
-            // Ignore router navigation interruption
-          }
-        }
+      if (URL_SYNCED_PATHS.includes(currentPath) || urlHasSelection) {
+        url.searchParams.set('sport', newSport);
+        url.searchParams.set('gender', newGender);
+        url.searchParams.delete('category');
+        window.history.replaceState(null, '', url.toString());
       }
     },
-    [pathname, router]
+    [pathname]
   );
 
   const setSport = useCallback(
-    (newSport: SportType) => {
-      updateSportAndGender(newSport, gender);
-    },
+    (newSport: SportType) => updateSportAndGender(newSport, gender),
     [gender, updateSportAndGender]
   );
 
   const setGender = useCallback(
-    (newGender: GenderType) => {
-      updateSportAndGender(sport, newGender);
-    },
+    (newGender: GenderType) => updateSportAndGender(sport, newGender),
     [sport, updateSportAndGender]
-  );
-
-  const setSportAndGender = useCallback(
-    (newSport: SportType, newGender: GenderType) => {
-      updateSportAndGender(newSport, newGender);
-    },
-    [updateSportAndGender]
   );
 
   const getNavHref = useCallback(
@@ -136,7 +136,7 @@ export const SportsProviderInner: React.FC<{ children: React.ReactNode }> = ({ c
         gender,
         setSport,
         setGender,
-        setSportAndGender,
+        setSportAndGender: updateSportAndGender,
         getNavHref,
       }}
     >

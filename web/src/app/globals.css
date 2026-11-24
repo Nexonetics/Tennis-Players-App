@@ -10,6 +10,32 @@
   --color-brand-pink: #FA2E72;
   --color-brand-pink-light: #FDF2F4;
   --color-brand-pink-dark: #E02263;
+
+  --animate-fade-in: fade-in 0.2s ease-out both;
+  --animate-slide-in-left: slide-in-left 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-pop-in: pop-in 0.16s ease-out both;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slide-in-left {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes slide-up {
+    from { transform: translateY(24px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes pop-in {
+    from { transform: translateY(-4px) scale(0.98); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -18,6 +44,27 @@ body {
   font-family: var(--font-sans);
   overflow-x: hidden;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Visible, on-brand keyboard focus (mouse/touch clicks don't trigger :focus-visible).
+   In the base layer so component utilities like focus:outline-none still win. */
+@layer base {
+  :where(a, button, select, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+    outline: 2px solid #fa2e72;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Custom subtle scrollbar */

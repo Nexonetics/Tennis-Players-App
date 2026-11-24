@@ -21,12 +21,12 @@ export const UpcomingMatches: React.FC = () => {
         </Link>
       </div>
 
-      {/* 4 Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      {/* Swipeable carousel on phones, grid from tablet up */}
+      <div className="flex sm:grid sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 overflow-x-auto sm:overflow-visible snap-x snap-mandatory scroll-px-4 -mx-4 px-4 sm:mx-0 sm:px-0 pb-1 scrollbar-hide">
         {upcomingMatches.map((match) => (
           <div
             key={match.id}
-            className="relative bg-white rounded-3xl p-4 border border-slate-100 shadow-xs flex flex-col justify-between overflow-hidden group hover:shadow-sm transition-all duration-200 active:scale-[0.99]"
+            className="relative w-[78%] max-w-[300px] sm:w-auto sm:max-w-none shrink-0 snap-start bg-white rounded-3xl p-4 border border-slate-100 shadow-xs flex flex-col justify-between overflow-hidden group hover:shadow-sm transition-all duration-200 active:scale-[0.99]"
           >
             {/* Subtle top right decorative pink glow */}
             <div className="absolute -top-6 -right-6 w-20 h-20 bg-[#FDF2F4] rounded-full blur-xl pointer-events-none opacity-80" />

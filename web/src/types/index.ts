@@ -172,7 +172,8 @@ export interface UnifiedAthlete {
   losses?: number;
   imageUrl?: string;
   points?: string;
-  extraInfo?: Record<string, any>;
+  /** The raw source record (sport-specific fields). */
+  extraInfo?: Record<string, unknown>;
 }
 
 // College basketball betting data (scraper/college_basketball_odds.py -> college_basketball.json)

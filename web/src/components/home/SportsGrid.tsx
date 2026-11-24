@@ -8,6 +8,7 @@ import { sportCategories } from '@/data/dummyData';
 import { getAssetUrl } from '@/lib/getAssetUrl';
 
 import { useSports } from '@/context/SportsContext';
+import { parseSport } from '@/lib/sports';
 
 const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, className = '' }) => {
   switch (name) {
@@ -62,7 +63,10 @@ export const SportsGrid: React.FC = () => {
         <Link
           key={sport.id}
           href={`/rankings?sport=${encodeURIComponent(sport.title)}&gender=${gender}`}
-          onClick={() => setSport(sport.title as any)}
+          onClick={() => {
+            const parsed = parseSport(sport.title);
+            if (parsed) setSport(parsed);
+          }}
           className="relative h-[115px] sm:h-[138px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
         >
           {/* Background image */}
@@ -84,10 +88,10 @@ export const SportsGrid: React.FC = () => {
                 <SportIcon name={sport.iconName} className="w-5 h-5 sm:w-7 sm:h-7" />
               </div>
               <div className="pt-0.5 min-w-0">
-                <h3 className="text-xs sm:text-base font-bold leading-tight tracking-tight text-white drop-shadow-xs truncate">
+                <h3 className="text-sm sm:text-base font-bold leading-tight tracking-tight text-white drop-shadow-xs truncate">
                   {sport.title}
                 </h3>
-                <p className="text-[10px] sm:text-[11px] text-white/80 font-normal tracking-wide mt-0.5 truncate">
+                <p className="hidden sm:block text-[11px] text-white/80 font-normal tracking-wide mt-0.5 truncate">
                   {sport.subtitle}
                 </p>
               </div>

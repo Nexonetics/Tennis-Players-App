@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { LayoutShell } from "@/components/layout/LayoutShell";
@@ -12,6 +12,14 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "SportsSearch - Live Scores, Rankings & Tournaments",
   description: "Live scores, player rankings, tournaments and more — all in one place.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Lets the layout extend under the notch / home indicator; insets are padded via env(safe-area-inset-*).
+  viewportFit: "cover",
+  themeColor: "#F8FAFC",
 };
 
 export default function RootLayout({

@@ -1,52 +1,71 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
-import { Calendar, User, Trophy, Medal, Star, TrendingUp, ArrowLeftRight, Loader2, Building2, Shield, Award } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Calendar, User, Trophy, Medal, Star, TrendingUp, ArrowLeftRight, ArrowLeft, Loader2, Building2, Shield, Award } from 'lucide-react';
 import { UnifiedAthlete, HistoryPoint } from '@/types';
 import { getAthleteById, getAthleteHistory } from '@/lib/localDataService';
+import { AthleteImage } from '@/components/ui/AthleteImage';
+import { formatMonthYear, formatFullDate } from '@/lib/format';
+import { formatRank, isRanked } from '@/lib/sports';
+import { RankingHistoryChart } from '@/components/player/RankingHistoryChart';
 
-// Safe Athlete Image component with onError fallback
-const AthleteImage = ({ src, alt, width, height, className, fallbackLetter }: {
-  src?: string;
-  alt: string;
-  width: number;
-  height: number;
-  className?: string;
-  fallbackLetter: string;
-}) => {
-  const [hasError, setHasError] = useState(false);
+interface TeamExtraInfo {
+  founded_year?: number | string;
+  arena?: string;
+  stadium?: string;
+  league?: string;
+  confederation?: string;
+  head_coach?: string;
+  manager?: string;
+  titles?: number;
+  total_trophies?: number;
+  world_cup_titles?: number;
+}
 
-  if (!src || hasError) {
-    return (
-      <div className="w-full h-full bg-gradient-to-br from-pink-400 to-rose-600 text-white font-bold text-3xl sm:text-4xl flex items-center justify-center">
-        {fallbackLetter}
-      </div>
-    );
-  }
-
+/** Circular progress ring for a percentage (0–100). */
+function PercentRing({ value }: { value: number }) {
+  const clamped = Math.max(0, Math.min(100, value));
+  const radius = 16;
+  const circumference = 2 * Math.PI * radius;
   return (
-    <Image
-      src={src}
-      alt={alt}
-      width={width}
-      height={height}
-      className={className}
-      onError={() => setHasError(true)}
-    />
+    <div className="relative w-11 h-11 sm:w-12 sm:h-12 shrink-0" role="img" aria-label={`${clamped}%`}>
+      <svg viewBox="0 0 40 40" className="w-full h-full -rotate-90">
+        <circle cx="20" cy="20" r={radius} fill="none" stroke="#FCE7F3" strokeWidth="4" />
+        <circle
+          cx="20"
+          cy="20"
+          r={radius}
+          fill="none"
+          stroke="#FA2E72"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - clamped / 100)}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[#FA2E72]">
+        {Math.round(clamped)}%
+      </span>
+    </div>
   );
-};
+}
 
 export default function PlayerClientPage({ playerId }: { playerId?: string }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const effectiveId = searchParams.get('id') || playerId || '';
   const sportParam = searchParams.get('sport') || 'Tennis';
 
   const [athlete, setAthlete] = useState<UnifiedAthlete | null>(null);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleBack = () => {
+    if (window.history.length > 1) router.back();
+    else router.push('/rankings');
+  };
 
   useEffect(() => {
     async function fetchPlayerData() {
@@ -92,7 +111,7 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4 max-w-xl mx-auto text-center px-4">
         <h2 className="text-2xl font-bold text-slate-800">Profile Not Found</h2>
-        <p className="text-slate-500 text-sm">We couldn't find a profile matching this ID in the local dataset.</p>
+        <p className="text-slate-500 text-sm">We couldn&apos;t find a profile matching this ID in the local dataset.</p>
         <Link href="/rankings" className="mt-4 px-6 py-2.5 bg-[#FA2E72] text-white rounded-full text-sm font-bold shadow-sm">
           Return to Rankings
         </Link>
@@ -101,7 +120,9 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
   }
 
   const isTeam = athlete.sport === 'Football' || athlete.sport === 'Basketball';
-  const extra = (athlete.extraInfo || {}) as Record<string, any>;
+  const extra = (athlete.extraInfo || {}) as TeamExtraInfo;
+  // Tennis / table tennis publish real ranking points; team datasets only get an estimate from rank.
+  const hasOfficialPoints = Number(athlete.extraInfo?.points) > 0;
 
   // Helper function to sample points evenly across full career history timeline
   const sampleTimeline = (historyList: HistoryPoint[], maxPoints = 12): HistoryPoint[] => {
@@ -116,19 +137,20 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
     return sampled;
   };
 
-  // Format ranking history for SVG chart (samples across entire career timeline)
+  // Ranking history for the chart (samples across entire career timeline)
   const recentHistory = sampleTimeline(history, 12);
-  const validHistoryRanks = recentHistory
-    .map((h) => (typeof h.ranking === 'number' && !isNaN(h.ranking) ? h.ranking : parseInt(String(h.ranking), 10)))
-    .filter((r) => !isNaN(r));
-
-  const minRankInHist = validHistoryRanks.length > 0 ? Math.min(...validHistoryRanks) : athlete.ranking;
-  const maxRankInHist = validHistoryRanks.length > 0 ? Math.max(...validHistoryRanks) : athlete.ranking + 10;
-  const rankSpan = Math.max(1, maxRankInHist - minRankInHist);
-
 
   return (
-    <div className="flex flex-col gap-6 sm:gap-8 pb-16">
+    <div className="flex flex-col gap-5 sm:gap-8 pb-16">
+      <button
+        type="button"
+        onClick={handleBack}
+        className="self-start -mb-2 sm:-mb-4 -ml-1 flex items-center gap-1.5 py-1.5 pl-1 pr-3 rounded-full text-sm font-semibold text-slate-500 hover:text-slate-900 active:bg-slate-100 transition-colors cursor-pointer"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+
       {/* Top Banner & Header */}
       <div className="relative bg-gradient-to-r from-[#FA2E72] to-[#FF6B00] rounded-3xl p-5 sm:p-10 text-white overflow-hidden shadow-xl">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.2),transparent_60%)]" />
@@ -144,6 +166,8 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                 height={160}
                 className="w-full h-full object-cover object-top"
                 fallbackLetter={athlete.name.charAt(0)}
+                fallbackClassName="text-3xl sm:text-4xl"
+                preload
               />
             </div>
           </div>
@@ -158,7 +182,7 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
               <span>{athlete.country} ({athlete.countryCode})</span>
             </div>
 
-            <h1 className="text-2xl sm:text-5xl font-extrabold tracking-tight drop-shadow-sm truncate">
+            <h1 className="text-2xl sm:text-5xl font-extrabold tracking-tight drop-shadow-sm text-balance break-words md:truncate">
               {athlete.name}
             </h1>
 
@@ -197,10 +221,10 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
           </div>
 
           {/* Quick Action buttons */}
-          <div className="flex items-center justify-center gap-3 shrink-0 w-full sm:w-auto">
+          <div className="flex items-center justify-center gap-3 shrink-0 w-full md:w-auto">
             <Link
               href={`/compare?player1=${athlete.id}&sport=${encodeURIComponent(athlete.sport)}`}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-white text-[#FA2E72] hover:bg-pink-50 rounded-2xl text-xs sm:text-sm font-extrabold shadow-lg transition-transform active:scale-95 w-full sm:w-auto"
+              className="flex items-center justify-center gap-2 px-5 py-3 bg-white text-[#FA2E72] hover:bg-pink-50 rounded-2xl text-sm font-extrabold shadow-lg transition-transform active:scale-95 w-full md:w-auto"
             >
               <ArrowLeftRight className="w-4 h-4" />
               <span>Compare Head-to-Head</span>
@@ -221,10 +245,10 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                 <span>World Rank</span>
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">
-                {athlete.ranking && athlete.ranking < 9999 ? `#${athlete.ranking}` : 'Unranked'}
+                {formatRank(athlete.ranking)}
               </div>
               <div className="text-[10px] sm:text-xs text-emerald-600 font-semibold mt-0.5">
-                {athlete.ranking && athlete.ranking < 9999 ? 'Official Standing' : 'Currently Unranked'}
+                {isRanked(athlete.ranking) ? 'Official Standing' : 'Currently Unranked'}
               </div>
             </div>
 
@@ -234,10 +258,10 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                 <span>Career High</span>
               </div>
               <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">
-                {athlete.careerHighRank && athlete.careerHighRank < 9999 ? `#${athlete.careerHighRank}` : 'Unranked'}
+                {formatRank(athlete.careerHighRank)}
               </div>
               <div className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5 truncate">
-                {athlete.careerHighDate ? `Achieved ${athlete.careerHighDate}` : 'Best Rank'}
+                {athlete.careerHighDate ? `Achieved ${formatMonthYear(athlete.careerHighDate)}` : 'Best Rank'}
               </div>
             </div>
 
@@ -246,8 +270,10 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                 <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500" />
                 <span>Points / Rating</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">{athlete.points}</div>
-              <div className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5">Standardized</div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1 tabular-nums">{athlete.points}</div>
+              <div className="text-[10px] sm:text-xs text-slate-400 font-semibold mt-0.5">
+                {hasOfficialPoints ? 'Official ranking points' : 'Estimated from rank'}
+              </div>
             </div>
           </div>
 
@@ -270,139 +296,7 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
             </div>
 
             {recentHistory.length > 0 ? (
-              <div className="w-full relative flex flex-col pt-2">
-                {/* Responsive Aspect-Correct SVG Line Chart */}
-                <svg
-                  className="w-full h-auto overflow-visible select-none"
-                  viewBox="0 0 700 180"
-                  preserveAspectRatio="xMidYMid meet"
-                >
-                  <defs>
-                    <linearGradient id="rankingChartGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#FA2E72" stopOpacity="0.25" />
-                      <stop offset="100%" stopColor="#FA2E72" stopOpacity="0.0" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Horizontal Grid Lines */}
-                  <line x1="45" y1="30" x2="665" y2="30" stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <line x1="45" y1="85" x2="665" y2="85" stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
-                  <line x1="45" y1="140" x2="665" y2="140" stroke="#f1f5f9" strokeWidth="1.5" strokeDasharray="4 4" />
-
-                  {/* Y-Axis Rank Labels */}
-                  <text x="38" y="34" textAnchor="end" className="text-[10px] font-extrabold fill-slate-400">
-                    #{minRankInHist}
-                  </text>
-                  <text x="38" y="89" textAnchor="end" className="text-[10px] font-bold fill-slate-300">
-                    #{Math.round((minRankInHist + maxRankInHist) / 2)}
-                  </text>
-                  <text x="38" y="144" textAnchor="end" className="text-[10px] font-bold fill-slate-400">
-                    #{maxRankInHist}
-                  </text>
-
-                  {/* Calculate SVG Points */}
-                  {(() => {
-                    const svgW = 700;
-                    const padL = 45;
-                    const padR = 35;
-                    const padT = 30;
-                    const drawW = svgW - padL - padR;
-                    const drawH = 110;
-
-                    const pts = recentHistory.map((pt, idx) => {
-                      const rawRank = typeof pt.ranking === 'number' && !isNaN(pt.ranking) ? pt.ranking : (parseInt(String(pt.ranking), 10) || athlete.ranking);
-                      const calcX = padL + (idx / Math.max(1, recentHistory.length - 1)) * drawW;
-                      const calcY = padT + ((rawRank - minRankInHist) / rankSpan) * drawH;
-                      const x = isNaN(calcX) ? padL : calcX;
-                      const y = isNaN(calcY) ? padT : calcY;
-                      return { x, y, ranking: rawRank, date: pt.date || '', idx };
-                    });
-
-
-                    const polylineStr = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-                    const polygonStr = `${pts[0].x.toFixed(1)},140 ${polylineStr} ${pts[pts.length - 1].x.toFixed(1)},140`;
-
-                    return (
-                      <g>
-                        {/* Gradient Area Fill */}
-                        <polygon points={polygonStr} fill="url(#rankingChartGrad)" />
-
-                        {/* Smooth Main Line */}
-                        <polyline
-                          fill="none"
-                          stroke="#FA2E72"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          points={polylineStr}
-                        />
-
-                        {/* Data Points */}
-                        {pts.map((p) => (
-                          <g key={p.idx} className="group cursor-pointer">
-                            {/* Outer Glow on Hover */}
-                            <circle
-                              cx={p.x}
-                              cy={p.y}
-                              r="8"
-                              className="fill-[#FA2E72]/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                            />
-                            {/* Point Node */}
-                            <circle
-                              cx={p.x}
-                              cy={p.y}
-                              r="4.5"
-                              className="fill-white stroke-[#FA2E72] stroke-2 transition-transform group-hover:r-6"
-                            />
-                            {/* Tooltip on Hover */}
-                            <g className="opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                              <rect
-                                x={Math.min(620, Math.max(10, p.x - 45))}
-                                y={Math.max(5, p.y - 32)}
-                                width="90"
-                                height="22"
-                                rx="6"
-                                className="fill-slate-900/90 backdrop-blur-xs"
-                              />
-                              <text
-                                x={Math.min(665, Math.max(55, p.x))}
-                                y={Math.max(19, p.y - 18)}
-                                textAnchor="middle"
-                                className="text-[10px] font-bold fill-white"
-                              >
-                                #{p.ranking} • {p.date}
-                              </text>
-                            </g>
-                          </g>
-                        ))}
-
-                        {/* X-Axis Date Labels */}
-                        <text x={pts[0].x} y="165" textAnchor="start" className="text-[10px] font-bold fill-slate-400">
-                          {pts[0].date}
-                        </text>
-                        {pts.length > 2 && (
-                          <text
-                            x={pts[Math.floor(pts.length / 2)].x}
-                            y="165"
-                            textAnchor="middle"
-                            className="text-[10px] font-bold fill-slate-400"
-                          >
-                            {pts[Math.floor(pts.length / 2)].date}
-                          </text>
-                        )}
-                        <text
-                          x={pts[pts.length - 1].x}
-                          y="165"
-                          textAnchor="end"
-                          className="text-[10px] font-bold fill-slate-400"
-                        >
-                          {pts[pts.length - 1].date}
-                        </text>
-                      </g>
-                    );
-                  })()}
-                </svg>
-              </div>
+              <RankingHistoryChart points={recentHistory} fallbackRank={athlete.ranking} />
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-slate-400 text-xs font-semibold gap-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                 <TrendingUp className="w-8 h-8 opacity-40" />
@@ -441,7 +335,7 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                         </div>
                         <div>
                           <div className="text-[10px] sm:text-xs font-semibold text-slate-400">Date of Birth</div>
-                          <div className="font-bold text-slate-800">{athlete.birthDate}</div>
+                          <div className="font-bold text-slate-800">{formatFullDate(athlete.birthDate)}</div>
                         </div>
                       </div>
                       {athlete.age && (
@@ -475,9 +369,7 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
                           <div className="font-bold text-slate-800 text-sm sm:text-lg">{athlete.winRate}%</div>
                         </div>
                       </div>
-                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-4 border-[#FA2E72] border-r-pink-100 flex items-center justify-center text-[10px] font-bold text-[#FA2E72]">
-                        {Math.round(athlete.winRate)}%
-                      </div>
+                      <PercentRing value={athlete.winRate} />
                     </div>
                   )}
                 </>

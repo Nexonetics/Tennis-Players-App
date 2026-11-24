@@ -8,8 +8,36 @@ import {
   CollegeBasketballData,
 } from '@/types';
 
+/** Union of the raw JSON record shapes across all sports (only some fields exist per sport). */
+type RawAthleteRecord = Partial<TennisPlayer> &
+  Partial<TableTennisPlayer> &
+  Partial<FootballTeam> &
+  Partial<BasketballClub> & {
+    id: number | string;
+    points?: number | string;
+    style?: string;
+  };
+
+/** Synthetic "points" used only for datasets that don't publish real ranking points. */
+function estimatePointsFromRank(ranking: number): string {
+  if (ranking <= 10) return (12000 - ranking * 800).toLocaleString();
+  if (ranking <= 50) return (4000 - ranking * 50).toLocaleString();
+  if (ranking < 9999) return Math.max(100, 1500 - ranking * 10).toLocaleString();
+  return '500';
+}
+
+function hasRealPoints(raw: { points?: unknown } | undefined): boolean {
+  const value = raw?.points;
+  return value !== undefined && value !== null && value !== '' && Number(value) > 0;
+}
+
+/** Numeric value of a formatted points string like "10,350". */
+function pointsValue(points?: string): number {
+  return Number(String(points ?? '').replace(/[^0-9.]/g, '')) || 0;
+}
+
 // In-memory cache for raw parsed JSON data
-const dataCache: Record<string, any> = {};
+const dataCache: Record<string, unknown> = {};
 
 // In-memory cache for transformed UnifiedAthlete arrays per sport
 const athletesCache: Record<string, UnifiedAthlete[]> = {};
@@ -113,7 +141,7 @@ export function calculateAge(birthDate?: string): number | undefined {
 
 // Convert raw models into UnifiedAthlete
 export function toUnifiedAthlete(
-  raw: any,
+  raw: RawAthleteRecord,
   sport: 'Tennis' | 'Table Tennis' | 'Football' | 'Basketball'
 ): UnifiedAthlete {
   const idStr = String(raw.id);
@@ -133,7 +161,7 @@ export function toUnifiedAthlete(
   let winRate: number | undefined;
   if (typeof raw.win_percentage === 'number' && raw.win_percentage > 0) {
     winRate = raw.win_percentage;
-  } else if (raw.wins !== undefined && raw.losses !== undefined) {
+  } else if (typeof raw.wins === 'number' && typeof raw.losses === 'number') {
     const total = raw.wins + raw.losses;
     if (total > 0) {
       winRate = Number(((raw.wins / total) * 100).toFixed(1));
@@ -159,19 +187,8 @@ export function toUnifiedAthlete(
     gender = 'Men';
   }
 
-  // Calculate points string representation
-  let points = '1,000';
-  if (raw.points !== undefined && raw.points !== null && raw.points !== '' && Number(raw.points) > 0) {
-    points = Number(raw.points).toLocaleString();
-  } else if (ranking <= 10) {
-    points = `${(12000 - ranking * 800).toLocaleString()}`;
-  } else if (ranking <= 50) {
-    points = `${(4000 - ranking * 50).toLocaleString()}`;
-  } else if (ranking < 9999) {
-    points = `${Math.max(100, 1500 - ranking * 10).toLocaleString()}`;
-  } else {
-    points = '500';
-  }
+  // Real ranking points when the dataset has them, otherwise an estimate from rank
+  const points = hasRealPoints(raw) ? Number(raw.points).toLocaleString() : estimatePointsFromRank(ranking);
 
   return {
     id: idStr,
@@ -200,7 +217,7 @@ export async function getAthletesBySport(
   genderFilter?: string
 ): Promise<UnifiedAthlete[]> {
   if (!athletesCache[sport]) {
-    let rawList: any[] = [];
+    let rawList: RawAthleteRecord[] = [];
     if (sport === 'Tennis') {
       rawList = await getJsonData<TennisPlayer[]>('players.json');
     } else if (sport === 'Table Tennis') {
@@ -209,7 +226,7 @@ export async function getAthletesBySport(
       rawList = await getJsonData<FootballTeam[]>('football_national_teams.json');
     } else if (sport === 'Basketball') {
       // FIBA Basketball National Teams ONLY (matching Flutter app)
-      rawList = await getJsonData<any[]>('basketball_national_teams.json');
+      rawList = await getJsonData<RawAthleteRecord[]>('basketball_national_teams.json');
     }
 
     const converted = rawList.map((item) => toUnifiedAthlete(item, sport));
@@ -254,15 +271,12 @@ export async function getAthletesBySport(
 
       ranked.sort((a, b) => a.ranking - b.ranking);
 
-      // Re-assign clean sequential ranks & recalculated points
+      // Re-assign clean sequential ranks. Real ranking points are kept as-is;
+      // only datasets without points get an estimate that matches the new rank.
       ranked.forEach((a, idx) => {
         a.ranking = idx + 1;
-        if (a.ranking <= 10) {
-          a.points = `${(12000 - a.ranking * 800).toLocaleString()}`;
-        } else if (a.ranking <= 50) {
-          a.points = `${(4000 - a.ranking * 50).toLocaleString()}`;
-        } else {
-          a.points = `${Math.max(100, 1500 - a.ranking * 10).toLocaleString()}`;
+        if (!hasRealPoints(a.extraInfo)) {
+          a.points = estimatePointsFromRank(a.ranking);
         }
       });
 
@@ -276,10 +290,9 @@ export async function getAthletesBySport(
     // Index into global ID map for O(1) detail lookup
     deduplicated.forEach((a) => {
       athleteIdMap[`${sport}_${a.id}`] = a;
-      athleteIdMap[`any_${a.id}`] = a;
-      if (a.extraInfo?.id) {
-        athleteIdMap[`${sport}_${a.extraInfo.id}`] = a;
-        athleteIdMap[`any_${a.extraInfo.id}`] = a;
+      const rawId = a.extraInfo?.id;
+      if (rawId !== undefined && rawId !== null && rawId !== '') {
+        athleteIdMap[`${sport}_${String(rawId)}`] = a;
       }
     });
   }
@@ -362,7 +375,7 @@ export async function searchAthletes({
 
   if (country && country.trim() !== '' && country !== 'Country' && country !== 'All') {
     const c = country.toLowerCase().trim();
-    list = list.filter((a) => a.country.toLowerCase().includes(c) || a.countryCode.toLowerCase() === c);
+    list = list.filter((a) => a.country.toLowerCase() === c || a.countryCode.toLowerCase() === c);
   }
 
   if (minRank !== undefined && !isNaN(minRank)) {
@@ -376,7 +389,10 @@ export async function searchAthletes({
   if (sortBy === 'name') {
     list = [...list].sort((a, b) => a.name.localeCompare(b.name));
   } else if (sortBy === 'points') {
-    list = [...list].sort((a, b) => (b.winRate || 0) - (a.winRate || 0));
+    list = [...list].sort(
+      (a, b) =>
+        (b.winRate ?? -1) - (a.winRate ?? -1) || pointsValue(b.points) - pointsValue(a.points) || a.ranking - b.ranking
+    );
   } else {
     // Rank sort: ranked players first, then name
     list = [...list].sort((a, b) => a.ranking - b.ranking);
@@ -476,35 +492,42 @@ export async function getAthleteById(
     cleanId = targetId;
   }
 
-  // 1. Check O(1) indexed lookup map
-  if (athleteIdMap[`${sport}_${targetId}`]) return athleteIdMap[`${sport}_${targetId}`];
-  if (athleteIdMap[`any_${targetId}`]) return athleteIdMap[`any_${targetId}`];
-  if (athleteIdMap[`${sport}_${cleanId}`]) return athleteIdMap[`${sport}_${cleanId}`];
-  if (athleteIdMap[`any_${cleanId}`]) return athleteIdMap[`any_${cleanId}`];
+  const matchesId = (a: UnifiedAthlete) =>
+    String(a.id) === targetId ||
+    String(a.extraInfo?.id) === targetId ||
+    String(a.id) === cleanId ||
+    String(a.extraInfo?.id) === cleanId;
+  const isClubId = /^(b_club_|club_)/.test(targetId);
 
-  // 2. Ensure current sport is loaded
-  const list = await getAthletesBySport(sport);
-  const athlete = list.find(
-    (a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId || String(a.id) === cleanId || String(a.extraInfo?.id) === cleanId
-  );
-  if (athlete) return athlete;
-
-  // 3. Check other sports
-  for (const s of ['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const) {
-    if (s === sport) continue;
-    const found = (await getAthletesBySport(s)).find(
-      (a) => String(a.id) === targetId || String(a.extraInfo?.id) === targetId || String(a.id) === cleanId || String(a.extraInfo?.id) === cleanId
-    );
-    if (found) return found;
+  // 1. Basketball club IDs carry a prefix; resolve them against the clubs file
+  //    before the bare number can match an unrelated national team.
+  if (isClubId) {
+    const clubs = await getJsonData<BasketballClub[]>('basketball_clubs.json');
+    const club = clubs.find((c) => String(c.id) === cleanId);
+    if (club) return toUnifiedAthlete({ ...club, id: `b_club_${club.id}` }, 'Basketball');
   }
 
-  // 4. Fallback check for basketball clubs if requested ID was a club ID
-  if (targetId.startsWith('b_club_') || targetId.startsWith('club_') || sport === 'Basketball') {
+  // 2. Resolve within the requested sport. IDs are only unique per sport
+  //    (e.g. 7 is both a tennis player and a football team), so the lookup map is
+  //    keyed by sport and other sports are only scanned as a last resort below.
+  const list = await getAthletesBySport(sport);
+  if (athleteIdMap[`${sport}_${targetId}`]) return athleteIdMap[`${sport}_${targetId}`];
+  if (athleteIdMap[`${sport}_${cleanId}`]) return athleteIdMap[`${sport}_${cleanId}`];
+  const athlete = list.find(matchesId);
+  if (athlete) return athlete;
+
+  // 3. Un-prefixed basketball club IDs
+  if (sport === 'Basketball' && !isClubId) {
     const clubs = await getJsonData<BasketballClub[]>('basketball_clubs.json');
-    const club = clubs.find((c) => String(c.id) === cleanId || String(c.id) === targetId);
-    if (club) {
-      return toUnifiedAthlete({ ...club, id: `b_club_${club.id}` }, 'Basketball');
-    }
+    const club = clubs.find((c) => String(c.id) === cleanId);
+    if (club) return toUnifiedAthlete({ ...club, id: `b_club_${club.id}` }, 'Basketball');
+  }
+
+  // 4. Last resort for links without a (correct) sport: other sports
+  for (const s of ['Tennis', 'Table Tennis', 'Football', 'Basketball'] as const) {
+    if (s === sport) continue;
+    const found = (await getAthletesBySport(s)).find(matchesId);
+    if (found) return found;
   }
 
   return null;
