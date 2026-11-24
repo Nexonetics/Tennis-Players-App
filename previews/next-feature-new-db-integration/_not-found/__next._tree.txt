@@ -1,2 +1,2 @@
-:HL["/Tennis-Players-App/previews/next-feature-new-db-integration/_next/static/chunks/0ydjcirs6_1kc.css","style"]
-0:{"tree":{"name":"","param":null,"prefetchHints":4176,"slots":{"children":{"name":"/_not-found","param":null,"prefetchHints":4192,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":4256,"slots":null}}}}},"staleTime":300,"buildId":"bB-nzF5oJDbiJvVj-bxD9"}
+:HL["/Tennis-Players-App/previews/next-feature-new-db-integration/_next/static/chunks/0wsedm8u7ako1.css","style"]
+0:{"tree":{"name":"","param":null,"prefetchHints":4176,"slots":{"children":{"name":"/_not-found","param":null,"prefetchHints":4192,"slots":{"children":{"name":"__PAGE__","param":null,"prefetchHints":4256,"slots":null}}}}},"staleTime":300,"buildId":"lESaGb4NDNRyNASJ90Bu8"}
