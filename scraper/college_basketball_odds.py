@@ -69,8 +69,12 @@ LEAGUES = {
 # Add entries here when a run reports "unmatched teams".
 TEAM_ALIASES: dict[str, str] = {
     "Appalachian St Mountaineers": "2026",  # ESPN: App State Mountaineers
+    "Army Knights": "349",                  # ESPN: Army Black Knights
+    "Gardner-Webb Bulldogs": "2241",        # ESPN: Gardner-Webb Runnin' Bulldogs
+    "Grand Canyon Antelopes": "2253",       # ESPN: Grand Canyon Lopes
     "IUPUI Jaguars": "85",                  # renamed IU Indianapolis
     "Long Beach St 49ers": "299",           # ESPN: Long Beach State Beach
+    "UMKC Kangaroos": "140",                # renamed Kansas City Roos
 }
 
 log = logging.getLogger("college_basketball")
