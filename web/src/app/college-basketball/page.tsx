@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, Clock, Info, Loader2, Search, AlertTriangle } from 'lucide-react';
 import { getCollegeBasketball } from '@/lib/localDataService';
 import { useSports } from '@/context/SportsContext';
-import { predictGame, formatPct, type GamePrediction } from '@/lib/cbbModel';
+import { findRecordOddsMismatch, predictGame, type GamePrediction } from '@/lib/cbbModel';
 import { TeamLogo, describeLeans, formatOdds, formatSpread, teamName, type LeanItem } from '@/components/cbb/shared';
 import { PredictionPanel, AnalysisTable } from '@/components/cbb/PredictionPanel';
 import { TopLeans } from '@/components/cbb/TopLeans';
@@ -51,28 +51,31 @@ const StreakBadge = ({ streak }: { streak?: string | null }) => {
   );
 };
 
-// Team | Spread | Best ML (| Win % on tablets — on wide screens the prediction panel sits alongside instead)
+const other = (side: 'home' | 'away') => (side === 'home' ? 'away' : 'home');
+/** Record win %: 4-1 -> "80%". */
+const recordPct = (p: number) => `${Math.round(p * 100)}%`;
+
+// Team | Spread | Best ML
 const TEAM_GRID =
-  'grid grid-cols-[minmax(0,1fr)_3.5rem_4.5rem] sm:grid-cols-[minmax(0,1fr)_5rem_7rem_4rem] lg:grid-cols-[minmax(0,1fr)_4.5rem_6.5rem] gap-2 sm:gap-4';
+  'grid grid-cols-[minmax(0,1fr)_3.5rem_4.5rem] sm:grid-cols-[minmax(0,1fr)_5rem_7rem] gap-2 sm:gap-4';
 
 function TeamRow({
   side,
   venue,
   spread,
   moneyline,
-  winProb,
-  isPick,
+  mismatch = false,
 }: {
   side: CbbGameSide;
   venue: 'home' | 'away';
   spread?: number | null;
   moneyline: { price: number; book: string } | null;
-  winProb?: number | null;
-  isPick: boolean;
+  /** Better win–loss record but the moneyline underdog. */
+  mismatch?: boolean;
 }) {
   const name = side.short_name || side.name;
   return (
-    <div className={`${TEAM_GRID} items-center py-2.5`}>
+    <div className={`${TEAM_GRID} items-center py-2.5 ${mismatch ? '-mx-2 px-2 rounded-xl bg-red-50' : ''}`}>
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
         <TeamLogo src={side.logo} name={name} />
         <div className="min-w-0">
@@ -81,9 +84,9 @@ function TeamRow({
             {side.record && (
               <span className="text-xs sm:text-sm font-bold text-slate-500 shrink-0">({side.record})</span>
             )}
-            {isPick && (
-              <span className="shrink-0 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[#FA2E72] text-white">
-                Pick
+            {mismatch && (
+              <span className="shrink-0 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-red-600 text-white">
+                Mismatch
               </span>
             )}
           </div>
@@ -110,14 +113,6 @@ function TeamRow({
       <div className="text-center">
         <div className="font-extrabold text-slate-900 text-sm sm:text-base tabular-nums">{formatOdds(moneyline?.price)}</div>
         {moneyline && <div className="text-[10px] text-slate-400 font-medium truncate">{moneyline.book}</div>}
-      </div>
-
-      <div
-        className={`hidden sm:block lg:hidden text-center font-bold text-sm tabular-nums ${
-          isPick ? 'text-[#FA2E72]' : 'text-slate-700'
-        }`}
-      >
-        {winProb !== undefined && winProb !== null ? formatPct(winProb) : '—'}
       </div>
     </div>
   );
@@ -199,6 +194,8 @@ function GameCard({
   prediction: GamePrediction | null;
   started: boolean;
 }) {
+  const mismatch = findRecordOddsMismatch(game);
+  const [showPrediction, setShowPrediction] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showBooks, setShowBooks] = useState(false);
 
@@ -229,13 +226,12 @@ function GameCard({
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_20rem] gap-3 lg:gap-6 mt-2">
+      <div className="mt-2">
         <div className="min-w-0">
           <div className={`${TEAM_GRID} text-[10px] uppercase tracking-wider font-bold text-slate-400`}>
             <span>Team</span>
             <span className="text-center">Spread</span>
             <span className="text-center">Best ML</span>
-            <span className="hidden sm:block lg:hidden text-center">Win %</span>
           </div>
           <div className="divide-y divide-slate-100">
             {(['away', 'home'] as const).map((side) => (
@@ -244,18 +240,31 @@ function GameCard({
                 side={game[side]}
                 venue={side}
                 spread={game.consensus_spread?.[side]}
-                moneyline={game.best_moneyline[side]}
-                winProb={prediction?.winProb[side]}
-                isPick={prediction?.pick === side}
+                moneyline={game.best_moneyline[side]}                mismatch={mismatch?.side === side}
               />
             ))}
           </div>
         </div>
-
-        {prediction && <PredictionPanel game={game} prediction={prediction} started={started} />}
       </div>
 
+      {mismatch && (
+        <p className="mt-2 flex items-start gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+          <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" aria-hidden="true" />
+          <span>
+            Mismatch: {teamName(game, mismatch.side)} wins more ({recordPct(mismatch.winPct[mismatch.side])} vs{' '}
+            {recordPct(mismatch.winPct[other(mismatch.side)])}) but is the moneyline underdog (
+            {formatOdds(mismatch.price[mismatch.side])} vs {formatOdds(mismatch.price[other(mismatch.side)])}).
+          </span>
+        </p>
+      )}
+
       <div className="mt-2 flex flex-wrap items-center gap-x-5">
+        {prediction && (
+          <button onClick={() => setShowPrediction((v) => !v)} aria-expanded={showPrediction} className={toggleClass}>
+            {showPrediction ? 'Show less' : 'Show more'}
+            <ChevronDown className={`w-4 h-4 transition-transform ${showPrediction ? 'rotate-180' : ''}`} />
+          </button>
+        )}
         {prediction && prediction.factors.length > 0 && (
           <button onClick={() => setShowAnalysis((v) => !v)} aria-expanded={showAnalysis} className={toggleClass}>
             {showAnalysis ? 'Hide' : 'Show'} win–loss analysis
@@ -270,6 +279,11 @@ function GameCard({
         )}
       </div>
 
+      {showPrediction && prediction && (
+        <div className="mt-3">
+          <PredictionPanel game={game} prediction={prediction} started={started} />
+        </div>
+      )}
       {showAnalysis && prediction && (
         <div className="mt-3 pt-3 border-t border-slate-100">
           <AnalysisTable game={game} prediction={prediction} />
@@ -495,7 +509,6 @@ function StandingsView({ league }: { league: CbbLeague }) {
                 <th className="py-3 pl-4 pr-2 font-bold w-12 min-w-12 sticky left-0 z-10 bg-slate-50">#</th>
                 <th className="py-3 px-2 font-bold sticky left-12 z-10 bg-slate-50">Team</th>
                 <th className="py-3 px-2 font-bold text-center">W-L</th>
-                <th className="py-3 px-2 font-bold text-center">Win %</th>
                 <th className="py-3 px-2 font-bold text-center">Home</th>
                 <th className="py-3 px-2 font-bold text-center">Away</th>
                 <th className="py-3 px-2 font-bold text-center">Conf</th>
@@ -520,7 +533,6 @@ function StandingsView({ league }: { league: CbbLeague }) {
                     </div>
                   </td>
                   <td className="py-2.5 px-2 text-center font-extrabold text-slate-900">{t.record ?? `${t.wins}-${t.losses}`}</td>
-                  <td className="py-2.5 px-2 text-center">{t.win_pct !== null ? t.win_pct.toFixed(3).replace(/^0/, '') : '—'}</td>
                   <td className="py-2.5 px-2 text-center">{t.home_record ?? '—'}</td>
                   <td className="py-2.5 px-2 text-center">{t.away_record ?? '—'}</td>
                   <td className="py-2.5 px-2 text-center">{t.conference_record ?? '—'}</td>

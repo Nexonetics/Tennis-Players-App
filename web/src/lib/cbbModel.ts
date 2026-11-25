@@ -176,6 +176,34 @@ export function parseRecord(record?: string | null): { wins: number; losses: num
   return m ? { wins: Number(m[1]), losses: Number(m[2]) } : null;
 }
 
+export interface RecordOddsMismatch {
+  /** Team with the better win–loss record that the moneyline still makes the underdog. */
+  side: Side;
+  winPct: Record<Side, number>;
+  price: Record<Side, number>;
+}
+
+/**
+ * Win % from each team's record (4-1 = 80%) vs. the best moneyline (the more negative price is the favourite).
+ * A mismatch is when the team with the higher win % has the higher moneyline, i.e. is the underdog.
+ */
+export function findRecordOddsMismatch(game: CbbGame): RecordOddsMismatch | null {
+  const home = parseRecord(game.home.record);
+  const away = parseRecord(game.away.record);
+  const homePrice = game.best_moneyline.home?.price;
+  const awayPrice = game.best_moneyline.away?.price;
+  if (!home || !away || homePrice == null || awayPrice == null) return null;
+  const homeGames = home.wins + home.losses;
+  const awayGames = away.wins + away.losses;
+  if (!homeGames || !awayGames) return null;
+
+  const winPct = { home: home.wins / homeGames, away: away.wins / awayGames };
+  if (winPct.home === winPct.away || homePrice === awayPrice) return null;
+  const betterRecord: Side = winPct.home > winPct.away ? 'home' : 'away';
+  const favourite: Side = homePrice < awayPrice ? 'home' : 'away';
+  return betterRecord === favourite ? null : { side: betterRecord, winPct, price: { home: homePrice, away: awayPrice } };
+}
+
 /** "W3" -> 3, "L2" -> -2, anything else -> 0. */
 export function parseStreak(streak?: string | null): number {
   const m = /^([WL])(\d+)$/.exec(streak ?? '');
