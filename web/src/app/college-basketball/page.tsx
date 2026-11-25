@@ -70,7 +70,7 @@ function TeamRow({
   venue: 'home' | 'away';
   spread?: number | null;
   moneyline: { price: number; book: string } | null;
-  /** Better win–loss record but the moneyline underdog. */
+  /** Records and moneyline disagree: better record is the underdog, worse record the favourite. */
   mismatch?: boolean;
 }) {
   const name = side.short_name || side.name;
@@ -240,7 +240,8 @@ function GameCard({
                 side={game[side]}
                 venue={side}
                 spread={game.consensus_spread?.[side]}
-                moneyline={game.best_moneyline[side]}                mismatch={mismatch?.side === side}
+                moneyline={game.best_moneyline[side]}
+                mismatch={mismatch !== null}
               />
             ))}
           </div>
@@ -251,9 +252,10 @@ function GameCard({
         <p className="mt-2 flex items-start gap-1.5 text-xs font-semibold text-red-700 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
           <AlertTriangle className="w-3.5 h-3.5 mt-px shrink-0" aria-hidden="true" />
           <span>
-            Mismatch: {teamName(game, mismatch.side)} wins more ({recordPct(mismatch.winPct[mismatch.side])} vs{' '}
-            {recordPct(mismatch.winPct[other(mismatch.side)])}) but is the moneyline underdog (
-            {formatOdds(mismatch.price[mismatch.side])} vs {formatOdds(mismatch.price[other(mismatch.side)])}).
+            Mismatch: {teamName(game, mismatch.side)} has the better record ({recordPct(mismatch.winPct[mismatch.side])}) but
+            is the underdog ({formatOdds(mismatch.price[mismatch.side])}); {teamName(game, other(mismatch.side))} has the
+            worse record ({recordPct(mismatch.winPct[other(mismatch.side)])}) but is the favourite (
+            {formatOdds(mismatch.price[other(mismatch.side)])}).
           </span>
         </p>
       )}
