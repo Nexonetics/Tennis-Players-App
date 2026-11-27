@@ -141,7 +141,7 @@ export default function PlayerClientPage({ playerId }: { playerId?: string }) {
   const recentHistory = sampleTimeline(history, 12);
 
   return (
-    <div className="flex flex-col gap-5 sm:gap-8 pb-16">
+    <div className="flex flex-col gap-5 sm:gap-8 w-full max-w-6xl mx-auto pb-16">
       <button
         type="button"
         onClick={handleBack}

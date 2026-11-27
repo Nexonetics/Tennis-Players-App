@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 import { X, Trophy, Search, ArrowLeftRight, Home, BadgeDollarSign } from 'lucide-react';
 import { SportsSearchLogo } from '../ui/SportsSearchLogo';
-import { currentUser, sportCategories } from '@/data/dummyData';
+import { sportCategories } from '@/data/dummyData';
 import { getAssetUrl } from '@/lib/getAssetUrl';
 import { useSports } from '@/context/SportsContext';
 import { useOverlay } from '@/hooks/useOverlay';
@@ -110,30 +110,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
                     {sport.title}
                   </span>
                   <span className="text-[11px] text-slate-500 font-medium truncate">
-                    {sport.subtitle}
+                    {sport.id === 'football' || sport.id === 'basketball' ? 'Teams • Rankings' : 'Players • Rankings'}
                   </span>
                 </Link>
               ))}
-            </div>
-          </div>
-
-          {/* User Profile Footer Card */}
-          <div className="mt-auto p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-[#C2185B] text-white flex items-center justify-center font-bold text-sm shadow-xs">
-                {currentUser.avatarLetter}
-              </div>
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-slate-900">
-                  {currentUser.name}
-                </span>
-                <span className="text-[10px] font-medium text-slate-500">
-                  Active User
-                </span>
-              </div>
-            </div>
-            <div className="px-2 py-1 bg-[#FA2E72]/10 text-[#FA2E72] rounded-full text-[10px] font-bold">
-              PRO
             </div>
           </div>
         </div>

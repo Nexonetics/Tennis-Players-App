@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { ArrowLeftRight, X, Search, Loader2, TrendingUp } from 'lucide-react';
 import { UnifiedAthlete, HistoryPoint } from '@/types';
 import { searchAthletes, getAthleteById, getAthleteHistory } from '@/lib/localDataService';
 import { useSports } from '@/context/SportsContext';
-import { Sport, parseSport, getSportEmoji, formatRank, isRanked } from '@/lib/sports';
+import { Sport, parseSport, formatRank, isRanked } from '@/lib/sports';
 import { formatMonthYear } from '@/lib/format';
 import { useElementWidth } from '@/hooks/useElementWidth';
 import { useOverlay } from '@/hooks/useOverlay';
@@ -372,35 +371,7 @@ function ComparePageContent() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-6xl mx-auto pb-12">
-      {/* Hero Banner */}
-      <div className="w-full min-h-[140px] sm:h-44 rounded-3xl overflow-hidden relative shadow-sm border border-blue-900 bg-[#0A2342] flex items-center px-5 sm:px-10 py-5">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=2000&auto=format&fit=crop"
-            alt=""
-            fill
-            sizes="100vw"
-            preload
-            className="object-cover opacity-30 mix-blend-overlay"
-          />
-        </div>
-        <div className="relative z-10 flex items-center gap-4 sm:gap-6">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-md text-white shrink-0">
-            <ArrowLeftRight className="w-6 h-6 sm:w-8 sm:h-8" />
-          </div>
-          <div>
-            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-[10px] font-bold uppercase tracking-widest mb-1.5 border border-white/10">
-              {getSportEmoji(sport)} {sport} Comparison
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-1 tracking-tight">
-              Compare <span className="text-[#FA2E72]">Athletes</span>
-            </h1>
-            <p className="text-blue-100 text-xs sm:text-sm font-medium max-w-lg">
-              Analyze and compare rankings, points, win rates, and historical timelines side-by-side.
-            </p>
-          </div>
-        </div>
-      </div>
+      <h1 className="sr-only">Compare Athletes</h1>
 
       {/* Sport Selector */}
       <SportPills value={sport} onChange={setSport} />
@@ -435,10 +406,13 @@ function ComparePageContent() {
                 disabled={!playerA || !playerB}
                 aria-label="Swap players"
                 title="Swap players"
-                className="group/swap relative flex items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-full text-slate-300 hover:text-[#FA2E72] hover:bg-pink-50 transition-colors cursor-pointer shrink-0 my-[-4px] lg:my-0 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-slate-300"
+                className="group/swap relative flex items-center justify-center w-14 h-9 lg:w-12 lg:h-12 rounded-full text-slate-400 hover:text-[#FA2E72] hover:bg-pink-50 active:bg-pink-50 transition-colors cursor-pointer shrink-0 my-[-4px] lg:my-0 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-slate-300"
               >
-                <span className="font-extrabold text-sm lg:text-xl group-hover/swap:opacity-0 transition-opacity">VS</span>
-                <ArrowLeftRight className="absolute w-5 h-5 rotate-90 lg:rotate-0 opacity-0 group-hover/swap:opacity-100 group-focus-visible/swap:opacity-100 transition-opacity" />
+                <span className="flex items-center gap-1 font-extrabold text-xs lg:text-xl lg:group-hover/swap:opacity-0 transition-opacity">
+                  <span>VS</span>
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-[#FA2E72] lg:hidden" aria-hidden="true" />
+                </span>
+                <ArrowLeftRight className="hidden lg:block absolute w-5 h-5 opacity-0 group-hover/swap:opacity-100 group-focus-visible/swap:opacity-100 transition-opacity" />
               </button>
 
               <PlayerSelector slot="B" player={playerB} onOpen={() => setSearchSlot('B')} />
@@ -453,8 +427,8 @@ function ComparePageContent() {
               </h3>
 
               {/* Headers */}
-              <div className="flex items-center justify-between px-1 sm:px-6">
-                <div className="flex items-center gap-2 sm:gap-3 w-5/12 min-w-0">
+              <div className="flex items-center justify-between gap-2 px-1 sm:px-6">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 border-white shadow-xs shrink-0 bg-slate-200 flex items-center justify-center">
                     <AthleteImage
                       src={playerA.imageUrl}
@@ -473,7 +447,7 @@ function ComparePageContent() {
 
                 <div className="text-slate-300 font-bold text-xs shrink-0 px-1">VS</div>
 
-                <div className="flex items-center gap-2 sm:gap-3 justify-end w-5/12 text-right min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 justify-end flex-1 text-right min-w-0">
                   <div className="min-w-0">
                     <div className="font-bold text-slate-900 text-xs sm:text-sm truncate">{playerB.name}</div>
                     <div className="text-[10px] font-semibold text-slate-500 truncate">{playerB.country}</div>

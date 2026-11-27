@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronRight, Loader2 } from 'lucide-react';
 import { UnifiedAthlete } from '@/types';
 import { searchAthletes } from '@/lib/localDataService';
 import { useSports, GenderType } from '@/context/SportsContext';
-import { getSportEmoji, formatRank, isRanked } from '@/lib/sports';
+import { formatRank, isRanked } from '@/lib/sports';
 import { AthleteImage } from '@/components/ui/AthleteImage';
 import { SportPills } from '@/components/ui/SportPills';
 import { Pagination } from '@/components/ui/Pagination';
@@ -84,74 +83,38 @@ function RankingsContent() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-6xl mx-auto pb-12">
-      {/* Hero Banner */}
-      <div className="w-full min-h-[120px] sm:h-40 rounded-3xl overflow-hidden relative shadow-sm border border-pink-100 bg-gradient-to-r from-pink-50 via-pink-100 to-rose-50 flex items-center px-5 sm:px-10 py-5">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?q=80&w=2000&auto=format&fit=crop"
-            alt=""
-            fill
-            sizes="100vw"
-            preload
-            className="object-cover opacity-20"
-          />
-        </div>
-        <div className="relative z-10 flex items-center gap-4 sm:gap-6">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-[#FA2E72] rounded-full flex items-center justify-center shadow-md text-2xl sm:text-3xl text-white shrink-0">
-            {getSportEmoji(activeSport)}
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-3xl font-bold text-slate-900 mb-0.5 sm:mb-1">{activeSport} World Rankings</h1>
-            <p className="text-slate-600 text-xs sm:text-sm font-medium">
-              Explore live cached rankings and detailed player statistics.
-            </p>
-          </div>
-        </div>
-      </div>
+      <h1 className="sr-only">{activeSport} World Rankings</h1>
 
-      {/* Sport Toggles */}
-      <SportPills value={activeSport} onChange={setSport} />
-
-      {/* Title & Category Toggles */}
+      {/* Sport Toggles & Category Switcher */}
       <div
         ref={listTopRef}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 mt-1 scroll-mt-20 md:scroll-mt-4"
+        className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 scroll-mt-20 md:scroll-mt-4"
       >
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <span className="text-xl sm:text-2xl" aria-hidden="true">
-            👑
-          </span>
-          <div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 flex items-center gap-2">
-              {activeSport} Leaderboard
-              {isFetching && result && (
-                <Loader2 className="w-4 h-4 text-[#FA2E72] animate-spin" aria-label="Updating rankings" />
-              )}
-            </h2>
-            <p className="text-[10px] sm:text-xs text-slate-500 font-medium uppercase tracking-wider">
-              Top {activeSport} Rankings
-            </p>
-          </div>
-        </div>
+        <SportPills value={activeSport} onChange={setSport} />
 
-        <div
-          className="flex bg-white rounded-full p-1 border border-slate-200 shadow-xs w-full sm:w-auto justify-center"
-          role="group"
-          aria-label="Category"
-        >
-          {categoryOptions.map((cat) => (
-            <button
-              key={cat.value}
-              type="button"
-              aria-pressed={activeCategory === cat.value}
-              onClick={() => setGender(cat.value)}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer text-center ${
-                activeCategory === cat.value ? 'bg-[#E02263] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between sm:justify-start xl:justify-end gap-2.5 w-full xl:w-auto shrink-0">
+          {isFetching && result && (
+            <Loader2 className="w-4 h-4 text-[#FA2E72] animate-spin shrink-0" aria-label="Updating rankings" />
+          )}
+          <div
+            className="flex bg-white rounded-full p-1 border border-slate-200 shadow-xs flex-1 sm:flex-none justify-center"
+            role="group"
+            aria-label="Category"
+          >
+            {categoryOptions.map((cat) => (
+              <button
+                key={cat.value}
+                type="button"
+                aria-pressed={activeCategory === cat.value}
+                onClick={() => setGender(cat.value)}
+                className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer text-center ${
+                  activeCategory === cat.value ? 'bg-[#E02263] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

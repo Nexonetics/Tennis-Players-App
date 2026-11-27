@@ -631,77 +631,69 @@ export default function CollegeBasketballPage() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-6xl mx-auto pb-12">
-      {/* Hero */}
-      <div className="w-full rounded-3xl overflow-hidden relative shadow-sm border border-pink-100 bg-gradient-to-r from-pink-50 via-pink-100 to-rose-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 sm:px-10 py-5 sm:py-7">
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-[#FA2E72] rounded-full flex items-center justify-center shadow-md text-2xl sm:text-3xl text-white shrink-0">
-            🏀
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-3xl font-bold text-slate-900 mb-0.5 sm:mb-1">College Basketball Odds</h1>
-            <p className="text-slate-600 text-xs sm:text-sm font-medium">
-              NCAA lines from US sportsbooks, win–loss analysis and a predicted winner for every game.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={handleFetchOdds}
-            disabled={refreshing}
-            className="inline-flex items-center gap-2 rounded-full bg-white/90 border border-pink-200 px-4 py-2 text-xs font-bold text-brand-pink-dark shadow-xs hover:bg-white transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Fetching odds…' : 'Fetch latest odds'}
-          </button>
-          {refreshNotice && (
-            <span
-              role="status"
-              className={`text-[11px] font-semibold ${refreshNotice.ok ? 'text-emerald-700' : 'text-rose-700'}`}
-            >
-              {refreshNotice.text}
-            </span>
-          )}
-        </div>
-      </div>
+      <h1 className="sr-only">College Basketball Odds</h1>
 
-      {/* Men / Women + tabs */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        <div className="flex bg-white rounded-full p-1 border border-slate-200 shadow-xs">
-          {(
-            [
-              ['games', 'Games & Odds'],
-              ['teams', 'Team Records'],
-            ] as const
-          ).map(([value, label]) => (
+      {/* Tabs + Men / Women + Fetch latest odds */}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3">
+          <div className="flex bg-white rounded-full p-1 border border-slate-200 shadow-xs">
+            {(
+              [
+                ['games', 'Games & Odds'],
+                ['teams', 'Team Records'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={tab === value}
+                onClick={() => setTab(value)}
+                className={`flex-1 md:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                  tab === value ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between md:justify-end gap-2.5">
+            <div className="flex bg-white rounded-full p-1 border border-slate-200 shadow-xs">
+              {(['Men', 'Women'] as const).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  aria-pressed={gender === g}
+                  onClick={() => setGender(g)}
+                  className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    gender === g ? 'bg-[#E02263] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+
             <button
-              key={value}
               type="button"
-              aria-pressed={tab === value}
-              onClick={() => setTab(value)}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                tab === value ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-              }`}
+              onClick={handleFetchOdds}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 rounded-full bg-white border border-pink-200 px-4 py-2.5 text-xs font-bold text-brand-pink-dark shadow-xs hover:bg-pink-50/60 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait active:scale-95 shrink-0"
             >
-              {label}
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              {refreshing ? 'Fetching odds…' : 'Fetch latest odds'}
             </button>
-          ))}
+          </div>
         </div>
-        <div className="flex bg-white rounded-full p-1 border border-slate-200 shadow-xs">
-          {(['Men', 'Women'] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              aria-pressed={gender === g}
-              onClick={() => setGender(g)}
-              className={`flex-1 sm:flex-none px-4 sm:px-6 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                gender === g ? 'bg-[#E02263] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              {g}
-            </button>
-          ))}
-        </div>
+
+        {refreshNotice && (
+          <p
+            role="status"
+            className={`text-xs font-semibold md:text-right ${refreshNotice.ok ? 'text-emerald-700' : 'text-rose-700'}`}
+          >
+            {refreshNotice.text}
+          </p>
+        )}
       </div>
 
       {loading ? (

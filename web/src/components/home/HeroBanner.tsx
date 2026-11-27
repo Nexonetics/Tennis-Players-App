@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Radio } from 'lucide-react';
+import { ArrowRight, Database } from 'lucide-react';
 import { getAssetUrl } from '@/lib/getAssetUrl';
 import { Sport } from '@/lib/sports';
 import { useSports } from '@/context/SportsContext';
@@ -23,7 +23,7 @@ const SLIDES: Slide[] = [
     image: '/images/hero-tennis.jpg',
     title: 'Game',
     highlight: 'On!',
-    text: 'Live rankings, 14,000+ cached player profiles, statistics & history graphs.',
+    text: 'World rankings, 14,000+ cached player profiles, statistics & history graphs.',
     cta: 'Explore World Rankings',
   },
   {
@@ -75,7 +75,7 @@ export const HeroBanner: React.FC = () => {
     <section
       aria-roledescription="carousel"
       aria-label="Featured sports"
-      className="relative w-full min-h-[190px] sm:h-[220px] rounded-3xl overflow-hidden shadow-sm select-none bg-[#0a1128]"
+      className="relative w-full min-h-[195px] sm:h-[235px] lg:h-[250px] rounded-3xl overflow-hidden shadow-sm select-none bg-[#0a1128]"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onFocus={() => setIsPaused(true)}
@@ -97,7 +97,7 @@ export const HeroBanner: React.FC = () => {
           src={getAssetUrl(s.image)}
           alt=""
           fill
-          sizes="(max-width: 1280px) 100vw, 66vw"
+          sizes="(max-width: 1280px) 100vw, 1152px"
           className={`object-cover object-center transition-opacity duration-700 ${
             i === activeSlide ? 'opacity-100' : 'opacity-0'
           }`}
@@ -106,19 +106,19 @@ export const HeroBanner: React.FC = () => {
       ))}
 
       {/* Dark overlay gradient from left to right */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1128] via-[#0a1128]/85 via-45% to-transparent z-1" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1128] via-[#0a1128]/90 via-60% sm:via-[#0a1128]/85 sm:via-45% to-transparent z-1" />
 
       {/* Content overlay */}
       <div
-        className="relative z-2 h-full flex flex-col justify-between p-5 sm:p-7 text-white gap-4"
+        className="relative z-2 h-full flex flex-col justify-between p-5 sm:p-8 text-white gap-4"
         aria-live={isPaused ? 'polite' : 'off'}
       >
         <div key={slide.sport} className="animate-fade-in">
           {/* Top Badges */}
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-2.5">
             <div className="flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-[#1e293b]/90 border border-indigo-400/30 text-indigo-200 text-[10px] sm:text-xs font-medium backdrop-blur-xs">
-              <Radio className="w-3 h-3 text-indigo-400 animate-pulse" />
-              <span>Cached Local Database</span>
+              <Database className="w-3 h-3 text-indigo-300" />
+              <span>Sports Database</span>
             </div>
             <div className="px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-[#FA2E72] text-white text-[10px] sm:text-xs font-semibold shadow-xs">
               {slide.sport}
@@ -126,12 +126,12 @@ export const HeroBanner: React.FC = () => {
           </div>
 
           {/* Heading */}
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mb-1 text-white">
+          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight mb-1 sm:mb-1.5 text-white">
             {slide.title} <span className="text-[#FA2E72]">{slide.highlight}</span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-xs text-slate-300 max-w-[16rem] sm:max-w-sm font-normal leading-relaxed">{slide.text}</p>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-[17rem] sm:max-w-md font-normal leading-relaxed">{slide.text}</p>
         </div>
 
         {/* CTA Button & Pagination Dots Row */}

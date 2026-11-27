@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, Suspense } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search as SearchIcon, MapPin, BarChart3, Loader2, ArrowUpDown, X, SearchX, ChevronDown } from 'lucide-react';
@@ -9,7 +8,7 @@ import { UnifiedAthlete } from '@/types';
 import { getUniqueCountries, searchAthletes } from '@/lib/localDataService';
 import { useSports } from '@/context/SportsContext';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { getSportEmoji, isRanked } from '@/lib/sports';
+import { isRanked } from '@/lib/sports';
 import { AthleteImage } from '@/components/ui/AthleteImage';
 import { SportPills } from '@/components/ui/SportPills';
 import { Pagination } from '@/components/ui/Pagination';
@@ -42,7 +41,7 @@ interface SearchResult {
 }
 
 const selectClassName =
-  'w-full bg-white border border-slate-200 hover:border-slate-300 rounded-full py-2.5 pl-9.5 pr-8 text-base sm:text-sm text-slate-700 focus:outline-none focus:border-[#FA2E72] focus:ring-1 focus:ring-[#FA2E72] appearance-none shadow-xs font-medium cursor-pointer truncate transition-colors';
+  'w-full bg-white border border-slate-200 hover:border-slate-300 rounded-full py-2.5 pl-8.5 pr-7 sm:pl-9.5 sm:pr-8 text-base sm:text-sm text-slate-700 focus:outline-none focus:border-[#FA2E72] focus:ring-1 focus:ring-[#FA2E72] appearance-none shadow-xs font-medium cursor-pointer truncate transition-colors';
 
 function ResultCardSkeleton() {
   return (
@@ -160,35 +159,7 @@ function SearchContent() {
 
   return (
     <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-6xl mx-auto pb-12">
-      {/* Hero Banner */}
-      <div className="w-full min-h-[140px] sm:h-44 rounded-3xl overflow-hidden relative shadow-sm border border-blue-900 bg-[#0A2342] flex items-center px-5 sm:px-10 py-5">
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="https://images.unsplash.com/photo-1534158914592-062992fbe900?q=80&w=2000&auto=format&fit=crop"
-            alt=""
-            fill
-            sizes="100vw"
-            preload
-            className="object-cover opacity-40 mix-blend-overlay"
-          />
-        </div>
-        <div className="relative z-10 flex items-center gap-4 sm:gap-6">
-          <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center border border-white/20 shadow-md text-white text-2xl sm:text-3xl shrink-0">
-            {getSportEmoji(sport)}
-          </div>
-          <div>
-            <div className="inline-block px-2.5 py-0.5 sm:px-3 sm:py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-[10px] font-bold uppercase tracking-widest mb-1.5 border border-white/10">
-              Local Data Explorer
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-white mb-1 tracking-tight">
-              Find Your Favorite <span className="text-[#FA2E72]">Athletes</span>
-            </h1>
-            <p className="text-blue-100 text-xs sm:text-sm font-medium">
-              Search and filter real cached profiles across tennis, table tennis, football and basketball.
-            </p>
-          </div>
-        </div>
-      </div>
+      <h1 className="sr-only">Search Athletes</h1>
 
       {/* Sport Selector */}
       <SportPills value={sport} onChange={setSport} />
@@ -244,7 +215,7 @@ function SearchContent() {
         {/* Country & Rank Range Dropdowns (2-up grid on phones) */}
         <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center">
           <div className="relative w-full sm:w-44 shrink-0">
-            <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <MapPin className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <select
               value={selectedCountry}
               onChange={(e) => setCountryChoice({ sport, value: e.target.value })}
@@ -258,11 +229,11 @@ function SearchContent() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
 
           <div className="relative w-full sm:w-40 shrink-0">
-            <BarChart3 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <BarChart3 className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <select
               value={rankRange}
               onChange={(e) => setRankRange(e.target.value)}
@@ -275,7 +246,7 @@ function SearchContent() {
                 </option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
         </div>
       </div>

@@ -7,8 +7,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Search,
-  Bell,
-  ChevronDown,
   X,
   Loader2,
   ArrowRight,
@@ -18,7 +16,6 @@ import {
   SlidersHorizontal,
   BadgeDollarSign,
 } from 'lucide-react';
-import { currentUser } from '@/data/dummyData';
 import { SportsSearchLogo } from '../ui/SportsSearchLogo';
 import { UnifiedAthlete } from '@/types';
 import { searchAllAthletes } from '@/lib/localDataService';
@@ -408,8 +405,8 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/85 backdrop-blur-lg border-b border-slate-200/60 pt-[env(safe-area-inset-top)] md:relative md:bg-transparent md:backdrop-blur-none md:border-0 md:pt-0">
-      <div className="flex items-center justify-between gap-3 sm:gap-6 py-2 md:py-3 px-4 sm:px-6 md:px-8">
+    <header className="sticky top-0 z-30 w-full bg-[#F8FAFC]/85 backdrop-blur-lg border-b border-slate-200/60 pt-[env(safe-area-inset-top)] md:relative md:bg-transparent md:backdrop-blur-none md:border-0 md:pt-0 px-4 sm:px-6 md:px-8">
+      <div className="flex items-center justify-between gap-3 sm:gap-6 py-2 md:py-3 w-full max-w-6xl mx-auto">
         {/* Mobile logo */}
         <Link href="/" className="md:hidden shrink-0" aria-label="SportsSearch home">
           <SportsSearchLogo size="sm" />
@@ -442,7 +439,7 @@ export const Header: React.FC = () => {
                 if (query.trim()) setIsOpen(true);
               }}
               onKeyDown={handleKeyDown}
-              placeholder="Search players, tournaments, sports..."
+              placeholder="Search players, teams, sports..."
               className="peer w-full pl-11 pr-10 py-2.5 bg-[#F1F5F9]/80 hover:bg-[#F1F5F9] focus:bg-white text-sm text-slate-800 placeholder-slate-400 rounded-full border border-slate-200/70 focus:outline-hidden focus:border-[#FA2E72]/50 focus:ring-2 focus:ring-[#FA2E72]/15 transition-all shadow-2xs font-medium"
             />
 
@@ -521,41 +518,15 @@ export const Header: React.FC = () => {
           )}
         </div>
 
-        {/* Right side controls (Search on mobile, Notifications & User Profile) */}
-        <div className="flex items-center gap-0.5 sm:gap-2 md:gap-5 shrink-0">
-          <button
-            type="button"
-            onClick={() => setIsMobileSearchOpen(true)}
-            className="md:hidden p-2.5 text-slate-600 rounded-full active:bg-slate-200/70 transition-colors cursor-pointer"
-            aria-label="Search"
-          >
-            <Search className="w-5 h-5" strokeWidth={1.9} />
-          </button>
-
-          {/* Notification Bell with Badge */}
-          <button
-            className="relative p-2.5 md:p-2 text-slate-600 hover:text-slate-900 rounded-full hover:bg-slate-100 active:bg-slate-200/70 transition-colors cursor-pointer"
-            aria-label={`Notifications (${currentUser.notificationsCount} unread)`}
-          >
-            <Bell className="w-5 h-5" strokeWidth={1.9} />
-            {currentUser.notificationsCount > 0 && (
-              <span className="absolute top-1.5 right-1.5 md:top-1 md:right-1 flex items-center justify-center min-w-4 h-4 px-1 text-[10px] font-bold text-white bg-[#FA2E72] rounded-full border-2 border-white shadow-xs">
-                {currentUser.notificationsCount}
-              </span>
-            )}
-          </button>
-
-          {/* User Profile Pill */}
-          <div className="flex items-center gap-2 pl-1 sm:pl-2 cursor-pointer group">
-            <div className="w-8 h-8 rounded-full bg-[#C2185B] text-white flex items-center justify-center font-bold text-sm shadow-xs group-hover:scale-105 transition-transform">
-              {currentUser.avatarLetter}
-            </div>
-            <span className="hidden sm:inline text-sm font-semibold text-slate-800 group-hover:text-slate-950">
-              {currentUser.name}
-            </span>
-            <ChevronDown className="hidden sm:inline w-4 h-4 text-slate-500 group-hover:text-slate-800 transition-colors" />
-          </div>
-        </div>
+        {/* Right side control (Search button on mobile) */}
+        <button
+          type="button"
+          onClick={() => setIsMobileSearchOpen(true)}
+          className="md:hidden p-2.5 text-slate-600 rounded-full active:bg-slate-200/70 transition-colors cursor-pointer shrink-0"
+          aria-label="Search"
+        >
+          <Search className="w-5 h-5" strokeWidth={1.9} />
+        </button>
       </div>
 
       {isMobileSearchOpen && (

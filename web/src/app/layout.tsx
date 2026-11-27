@@ -10,8 +10,8 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SportsSearch - Live Scores, Rankings & Tournaments",
-  description: "Live scores, player rankings, tournaments and more — all in one place.",
+  title: "SportsSearch - World Rankings, Stats & Odds",
+  description: "World rankings, athlete profiles, head-to-head comparisons, and college basketball odds.",
 };
 
 export const viewport: Viewport = {

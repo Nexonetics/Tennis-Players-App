@@ -25,7 +25,7 @@ export const LayoutShell: React.FC<{ children: React.ReactNode }> = ({ children 
           <Header />
 
           {/* Dashboard Body — bottom padding clears the fixed mobile nav + home indicator */}
-          <main className="flex-1 px-4 sm:px-6 md:px-8 pt-3 md:pt-0 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8 flex flex-col gap-5 overflow-y-auto">
+          <main className="flex-1 px-4 sm:px-6 md:px-8 pt-3 md:pt-1 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-8 flex flex-col gap-5 overflow-y-auto">
             {children}
           </main>
         </div>

@@ -58,7 +58,7 @@ const SportIcon: React.FC<{ name: string; className?: string }> = ({ name, class
 export const SportsGrid: React.FC = () => {
   const { gender, setSport } = useSports();
   return (
-    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       {sportCategories.map((sport) => (
         <Link
           key={sport.id}
@@ -67,14 +67,14 @@ export const SportsGrid: React.FC = () => {
             const parsed = parseSport(sport.title);
             if (parsed) setSport(parsed);
           }}
-          className="relative h-[115px] sm:h-[138px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
+          className="relative h-[116px] sm:h-[144px] lg:h-[156px] rounded-3xl overflow-hidden shadow-xs group cursor-pointer select-none transition-transform duration-200 hover:-translate-y-0.5 active:scale-95"
         >
           {/* Background image */}
           <Image
             src={getAssetUrl(sport.image)}
             alt={sport.title}
             fill
-            sizes="(max-width: 768px) 100vw, 50vw"
+            sizes="(max-width: 1024px) 50vw, 25vw"
             className="object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
 
@@ -83,15 +83,15 @@ export const SportsGrid: React.FC = () => {
 
           {/* Card Content */}
           <div className="relative z-2 h-full p-3.5 sm:p-4 flex flex-col justify-between text-white">
-            <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="flex items-start gap-2 sm:gap-2.5">
               <div className="p-0.5 sm:p-1 rounded-full text-white/95 shrink-0">
-                <SportIcon name={sport.iconName} className="w-5 h-5 sm:w-7 sm:h-7" />
+                <SportIcon name={sport.iconName} className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               <div className="pt-0.5 min-w-0">
                 <h3 className="text-sm sm:text-base font-bold leading-tight tracking-tight text-white drop-shadow-xs truncate">
                   {sport.title}
                 </h3>
-                <p className="hidden sm:block text-[11px] text-white/80 font-normal tracking-wide mt-0.5 truncate">
+                <p className="hidden sm:block text-[11px] text-white/85 font-normal tracking-wide mt-0.5 truncate">
                   {sport.subtitle}
                 </p>
               </div>
