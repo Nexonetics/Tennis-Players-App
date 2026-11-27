@@ -13,8 +13,7 @@ sys.path.append(os.path.join(project_root, 'backend'))
 
 load_dotenv(os.path.join(project_root, 'backend', '.env'))
 
-REMOTE_DB_URL = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&hostaddr=35.173.20.131"
-
+REMOTE_DB_URL = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 from sqlalchemy import create_engine
 from app.db.session import Base
 from app.models.basketball_national_team import (

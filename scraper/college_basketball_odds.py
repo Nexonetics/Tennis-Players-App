@@ -418,40 +418,28 @@ def last_odds_pull(previous: dict) -> str | None:
     return max(stamps) if stamps else None
 
 
-def run(args: argparse.Namespace) -> int:
+def build_payload(
+    previous: dict,
+    client: OddsClient | None,
+    regions: str = "us",
+    markets: str = "h2h,spreads,totals",
+) -> dict:
+    """Fetch ESPN records, plus odds when a client is given, and return the new data file.
+
+    With client=None only the records are refreshed and the previous odds are kept
+    (--records-only). No file I/O, so the backend API reuses this for its admin refresh.
+    Raises FetchError before spending any credits if ESPN or the free sports list fails.
+    """
     now = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    previous = load_previous(args.out)
-
-    # Daily cache: don't spend credits if odds were pulled recently.
-    last_pull = last_odds_pull(previous)
-    age = hours_since(last_pull)
-    if not args.records_only and not args.force and age is not None and age < args.max_age_hours:
-        log.info(
-            "Cached odds are %.1f h old (pulled %s), under the %s h limit. "
-            "Skipped: 0 credits spent. Use --force to pull anyway.",
-            age, last_pull, args.max_age_hours,
-        )
-        sync_public_copy(args.out)
-        return 0
-
-    client = None
-    active: set[str] = set()
-    if not args.records_only:
-        load_dotenv(os.path.join(SCRIPT_DIR, ".env"))
-        load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
-        api_key = os.environ.get("ODDS_API_KEY", "").strip()
-        if not api_key:
-            log.error("ODDS_API_KEY is not set (add it to scraper/.env or the environment).")
-            return 2
-        client = OddsClient(api_key)
-        active = client.active_sport_keys()
+    records_only = client is None
+    active: set[str] = client.active_sport_keys() if client else set()
 
     payload = {
         "generated_at": now,
-        "odds_pulled_at": last_pull if args.records_only else now,
+        "odds_pulled_at": last_odds_pull(previous) if records_only else now,
         "sources": {"odds": "The Odds API", "records": "ESPN"},
-        "regions": args.regions,
-        "markets": args.markets.split(","),
+        "regions": regions,
+        "markets": markets.split(","),
         "leagues": {},
     }
 
@@ -473,7 +461,7 @@ def run(args: argparse.Namespace) -> int:
             "teams": teams,
         }
 
-        if args.records_only:
+        if records_only:
             # Keep the last odds pull but refresh the team records embedded in each game.
             for g in prev_league.get("games", []):
                 for side in ("home", "away"):
@@ -484,7 +472,7 @@ def run(args: argparse.Namespace) -> int:
             league["odds_status"] = "inactive"
             league["odds_updated_at"] = now
         else:
-            events = client.odds(cfg["odds_key"], args.regions, args.markets)
+            events = client.odds(cfg["odds_key"], regions, markets)
             league["games"] = sorted(
                 (summarize_event(ev, matcher) for ev in events), key=lambda g: g["commence_time"]
             )
@@ -507,7 +495,35 @@ def run(args: argparse.Namespace) -> int:
         log.info("Odds API credits: used %s, remaining %s", client.quota["used"], client.quota["remaining"])
     elif previous.get("odds_api_credits"):
         payload["odds_api_credits"] = previous["odds_api_credits"]
+    return payload
 
+
+def run(args: argparse.Namespace) -> int:
+    previous = load_previous(args.out)
+
+    # Daily cache: don't spend credits if odds were pulled recently.
+    last_pull = last_odds_pull(previous)
+    age = hours_since(last_pull)
+    if not args.records_only and not args.force and age is not None and age < args.max_age_hours:
+        log.info(
+            "Cached odds are %.1f h old (pulled %s), under the %s h limit. "
+            "Skipped: 0 credits spent. Use --force to pull anyway.",
+            age, last_pull, args.max_age_hours,
+        )
+        sync_public_copy(args.out)
+        return 0
+
+    client = None
+    if not args.records_only:
+        load_dotenv(os.path.join(SCRIPT_DIR, ".env"))
+        load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+        api_key = os.environ.get("ODDS_API_KEY", "").strip()
+        if not api_key:
+            log.error("ODDS_API_KEY is not set (add it to scraper/.env or the environment).")
+            return 2
+        client = OddsClient(api_key)
+
+    payload = build_payload(previous, client, args.regions, args.markets)
     write_atomic(args.out, payload)
     sync_public_copy(args.out)
     log.info("Wrote %s", os.path.relpath(args.out, PROJECT_ROOT))

@@ -258,6 +258,7 @@ export interface CbbLeague {
 
 export interface CollegeBasketballData {
   generated_at: string;
+  odds_pulled_at?: string;
   sources: { odds: string; records: string };
   regions: string;
   markets: string[];

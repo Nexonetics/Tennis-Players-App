@@ -5,7 +5,7 @@ from datetime import date
 from sqlalchemy import create_engine, text
 
 # Load remote DB URL
-db_url = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+db_url = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 sqlite_path = "/home/nexonetics/nexonetics/tennis_app/tennis.db"
 
 print("--- POSTGRESQL DB (REMOTE) ---")

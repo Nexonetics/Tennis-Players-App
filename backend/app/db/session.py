@@ -11,6 +11,9 @@ if os.path.exists(_env_path):
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tennis.db")
+# SQLAlchemy 2.1+ maps plain postgresql:// to psycopg 3; this project ships psycopg2.
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = "postgresql+psycopg2://" + DATABASE_URL[len("postgresql://"):]
 
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):

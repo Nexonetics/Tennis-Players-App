@@ -16,8 +16,7 @@ sys.path.append(os.path.join(project_root, 'backend'))
 
 LOCAL_SQLITE_URL = f"sqlite:///{os.path.join(project_root, 'tennis.db')}"
 BACKEND_SQLITE_URL = f"sqlite:///{os.path.join(project_root, 'backend', 'tennis.db')}"
-REMOTE_DB_URL = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&hostaddr=35.173.20.131"
-
+REMOTE_DB_URL = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 def clean_name(name_str):
     if not name_str: return ""
     name = " ".join(name_str.split()).strip()

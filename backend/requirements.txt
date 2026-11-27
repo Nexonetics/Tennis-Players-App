@@ -12,5 +12,6 @@ passlib[bcrypt]
 bcrypt
 email-validator
 python-multipart
+mangum
 
 

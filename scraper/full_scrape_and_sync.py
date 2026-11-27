@@ -18,6 +18,7 @@ from playwright.sync_api import sync_playwright
 import sqlite3
 import psycopg2
 from psycopg2.extras import execute_batch
+from dotenv import load_dotenv
 
 if sys.platform == "win32":
     try:
@@ -29,8 +30,8 @@ if sys.platform == "win32":
 # Paths
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SQLITE_PATH = os.path.join(BASE_DIR, "tennis.db")
-REMOTE_DB_URL = os.getenv("DATABASE_URL") or "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
-
+load_dotenv(os.path.join(BASE_DIR, "scraper", ".env"))
+REMOTE_DB_URL = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 FRONTEND_DATA_DIR = os.path.join(BASE_DIR, "frontend", "assets", "data")
 WEB_SRC_DATA_DIR = os.path.join(BASE_DIR, "web", "src", "data", "json")
 WEB_PUB_DATA_DIR = os.path.join(BASE_DIR, "web", "public", "data", "json")

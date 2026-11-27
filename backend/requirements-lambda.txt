@@ -1,0 +1,10 @@
+# Runtime-only dependencies packaged into the AWS Lambda zip by deploy_lambda.sh.
+# Keep in sync with what app/ imports; dev/test tools stay in requirements.txt.
+fastapi
+sqlalchemy
+pydantic
+python-dotenv
+httpx
+psycopg2-binary
+mangum
+requests  # used by scraper/college_basketball_odds.py, bundled for the odds refresh endpoint

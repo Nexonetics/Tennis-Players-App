@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine, text
 
-db_url = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+db_url = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 engine = create_engine(db_url)
 
 with engine.connect() as conn:

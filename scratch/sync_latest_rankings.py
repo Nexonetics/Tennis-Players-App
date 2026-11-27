@@ -12,8 +12,7 @@ sys.path.append(os.path.join(project_root, 'backend'))
 
 load_dotenv(os.path.join(project_root, 'backend', '.env'))
 
-REMOTE_DB_URL = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
-
+REMOTE_DB_URL = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 def sync_sqlite():
     print("=== SYNCHRONIZING LOCAL SQLITE (tennis.db) ===")
     conn = sqlite3.connect(os.path.join(project_root, 'tennis.db'))

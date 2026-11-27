@@ -7,6 +7,7 @@ import {
   HistoryPoint,
   CollegeBasketballData,
 } from '@/types';
+import { API_BASE_URL } from './api';
 
 /** Union of the raw JSON record shapes across all sports (only some fields exist per sport). */
 type RawAthleteRecord = Partial<TennisPlayer> &
@@ -587,7 +588,56 @@ export async function getUniqueCountries(
   return Array.from(countrySet).sort();
 }
 
+function isCollegeBasketballData(data: unknown): data is CollegeBasketballData {
+  return !!data && typeof data === 'object' && !Array.isArray(data) && 'leagues' in data;
+}
+
+function errorDetail(body: unknown, status: number): string {
+  if (body && typeof body === 'object' && 'detail' in body) return String(body.detail);
+  return `HTTP ${status}`;
+}
+
+async function getCollegeBasketballFromApi(): Promise<CollegeBasketballData | null> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/college-basketball`, { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return null;
+    const data: unknown = await res.json();
+    return isCollegeBasketballData(data) ? data : null;
+  } catch {
+    return null; // backend unreachable or slow: the bundled snapshot still works
+  }
+}
+
+const snapshotTime = (data: CollegeBasketballData | null) => (data ? Date.parse(data.generated_at) || 0 : 0);
+
+/**
+ * Odds live in two places: the snapshot bundled with the site (refreshed by the daily
+ * GitHub job) and the backend (refreshed by the admin "Fetch latest odds" button).
+ * Show whichever is newer.
+ */
 export async function getCollegeBasketball(): Promise<CollegeBasketballData | null> {
-  const data = await getJsonData<CollegeBasketballData>('college_basketball.json');
-  return data && !Array.isArray(data) && data.leagues ? data : null;
+  const [bundled, live] = await Promise.all([
+    getJsonData<CollegeBasketballData>('college_basketball.json').then((d) => (isCollegeBasketballData(d) ? d : null)),
+    typeof window === 'undefined' ? Promise.resolve(null) : getCollegeBasketballFromApi(),
+  ]);
+  return snapshotTime(live) > snapshotTime(bundled) ? live : bundled;
+}
+
+export class AdminAuthError extends Error {
+  name = 'AdminAuthError';
+}
+
+/** Admin only: pull fresh odds now. Each pull spends Odds API credits. */
+export async function refreshCollegeBasketball(adminKey: string): Promise<CollegeBasketballData> {
+  const res = await fetch(`${API_BASE_URL}/college-basketball/refresh`, {
+    method: 'POST',
+    headers: { 'X-Admin-Key': adminKey },
+    signal: AbortSignal.timeout(60_000),
+  });
+  const body: unknown = await res.json().catch(() => null);
+  if (res.status === 401) throw new AdminAuthError('Wrong admin password');
+  if (!res.ok || !isCollegeBasketballData(body)) {
+    throw new Error(`Could not fetch odds: ${errorDetail(body, res.status)}`);
+  }
+  return body;
 }

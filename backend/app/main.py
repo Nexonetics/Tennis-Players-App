@@ -1,25 +1,42 @@
-import httpx
-import os
+import asyncio
 import hashlib
+import ipaddress
+import os
+from urllib.parse import urljoin, urlsplit
+
+import httpx
 from fastapi import FastAPI, Response, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import players, tt_players, football_national_teams, basketball_national_teams, basketball_clubs
+from fastapi.middleware.gzip import GZipMiddleware
+from mangum import Mangum
+
+from app.api.endpoints import players, tt_players, football_national_teams, basketball_national_teams, basketball_clubs, college_basketball
 from app.db.session import engine, Base
 import app.models  # Import models to ensure they are registered with Base metadata
-import uvicorn
 
-# Create database tables
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Warning: Could not automatically create database tables on startup: {e}")
+ON_LAMBDA = bool(os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
 
+# Creating tables costs database round trips on every Lambda cold start, and the tables
+# already exist in Neon, so the Lambda deployment sets AUTO_CREATE_TABLES=0.
+if os.getenv("AUTO_CREATE_TABLES", "1") == "1":
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Warning: Could not automatically create database tables on startup: {e}")
 
-
-# Ensure cache directory exists
-CACHE_DIR = "static/images"
+# Lambda's filesystem is read-only except /tmp.
+CACHE_DIR = os.getenv("IMAGE_CACHE_DIR") or ("/tmp/images" if ON_LAMBDA else "static/images")
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+# Lambda responses are capped at 6 MB after base64 encoding, so images must stay under ~4.5 MB.
+MAX_IMAGE_BYTES = 4 * 1024 * 1024
+MAX_REDIRECTS = 3
+ALLOWED_CONTENT_TYPES = ("image/", "application/octet-stream")
+PROXY_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Accept": "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+}
 
 app = FastAPI(
     title="Sports Data API",
@@ -27,53 +44,80 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
+async def _assert_public_http_url(url: str) -> None:
+    """Allow only http(s) URLs whose host resolves to public addresses, so the proxy
+    can't be pointed at localhost, private networks, or cloud metadata/runtime endpoints."""
+    parts = urlsplit(url)
+    if parts.scheme not in ("http", "https") or not parts.hostname:
+        raise HTTPException(status_code=400, detail="Only http(s) image URLs are allowed")
+    port = parts.port or (443 if parts.scheme == "https" else 80)
+    try:
+        infos = await asyncio.get_running_loop().getaddrinfo(parts.hostname, port)
+    except OSError:
+        raise HTTPException(status_code=400, detail="Image host could not be resolved")
+    if not infos or any(not ipaddress.ip_address(info[4][0]).is_global for info in infos):
+        raise HTTPException(status_code=400, detail="Image host is not allowed")
+
+
+async def _fetch_image(client: httpx.AsyncClient, url: str) -> tuple[bytes, str]:
+    target = url
+    for _ in range(MAX_REDIRECTS + 1):
+        # Redirects are followed by hand so every hop is re-checked.
+        await _assert_public_http_url(target)
+        async with client.stream("GET", target, headers=PROXY_HEADERS) as response:
+            if response.is_redirect:
+                target = urljoin(target, response.headers.get("location", ""))
+                continue
+            if response.status_code != 200:
+                raise HTTPException(status_code=502, detail=f"Source returned {response.status_code}")
+            content_type = response.headers.get("Content-Type", "image/jpeg")
+            if not content_type.lower().startswith(ALLOWED_CONTENT_TYPES):
+                raise HTTPException(status_code=415, detail="Source is not an image")
+            body = bytearray()
+            async for chunk in response.aiter_bytes():
+                body.extend(chunk)
+                if len(body) > MAX_IMAGE_BYTES:
+                    raise HTTPException(status_code=413, detail="Image is too large")
+            return bytes(body), content_type
+    raise HTTPException(status_code=502, detail="Too many redirects")
+
+
 @app.get("/proxy-image")
 async def proxy_image(url: str):
+    url = url.strip()
     if not url:
         raise HTTPException(status_code=400, detail="URL is required")
-        
+
     # Generate a unique filename based on the URL
     url_hash = hashlib.md5(url.encode()).hexdigest()
     # Extract extension if possible, default to jpg
+    lower = url.lower()
     ext = ".jpg"
-    if ".png" in url.lower(): ext = ".png"
-    elif ".svg" in url.lower(): ext = ".svg"
-    elif ".webp" in url.lower(): ext = ".webp"
-    
+    if ".png" in lower: ext = ".png"
+    elif ".svg" in lower: ext = ".svg"
+    elif ".webp" in lower: ext = ".webp"
+
     cache_path = os.path.join(CACHE_DIR, f"{url_hash}{ext}")
-    
+
     # Return cached image if it exists
     if os.path.exists(cache_path):
         return FileResponse(cache_path)
 
     async with httpx.AsyncClient(verify=False, timeout=20.0) as client:
         try:
-            url = url.strip()
-            headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            }
-            
-            try:
-                response = await client.get(url, headers=headers, follow_redirects=True)
-            except Exception:
-                response = await client.get(url, follow_redirects=True)
-            
-            if response.status_code == 200:
-                # Save to cache
-                with open(cache_path, "wb") as f:
-                    f.write(response.content)
-                
-                content_type = response.headers.get("Content-Type", "image/jpeg")
-                return Response(content=response.content, media_type=content_type)
-            else:
-                raise HTTPException(status_code=response.status_code, detail=f"Source returned {response.status_code}")
-                
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Proxy error: {str(e)}")
+            content, content_type = await _fetch_image(client, url)
+        except httpx.HTTPError as e:
+            raise HTTPException(status_code=502, detail=f"Proxy error: {e}")
 
+    try:
+        with open(cache_path, "wb") as f:
+            f.write(content)
+    except OSError as e:
+        print(f"Warning: could not cache image {url_hash}: {e}")
 
-from fastapi.middleware.gzip import GZipMiddleware
+    return Response(content=content, media_type=content_type)
+
 
 # Middleware configuration
 app.add_middleware(
@@ -91,57 +135,21 @@ app.include_router(tt_players.router, prefix="/tt-players", tags=["Table Tennis"
 app.include_router(football_national_teams.router, prefix="/football-national-teams", tags=["Football National Teams"])
 app.include_router(basketball_national_teams.router, prefix="/basketball-national-teams", tags=["Basketball National Teams"])
 app.include_router(basketball_clubs.router, prefix="/basketball-clubs", tags=["Basketball Clubs"])
+app.include_router(college_basketball.router, prefix="/college-basketball", tags=["College Basketball"])
 
+# Scraping runs in GitHub Actions (.github/workflows/daily_scrape.yml), not in the API:
+# Lambda freezes once a response is sent, so it can't host background scraper processes.
 
-
-@app.post("/trigger", tags=["Admin"])
-def trigger_scraper():
-    import subprocess
-    import os
-    try:
-        # Run scraper as a background process to avoid blocking API
-        scraper_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scraper", "main_scraper.py"))
-        subprocess.Popen(["python3", scraper_path])
-        return {"message": "Scraper triggered in background"}
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.post("/trigger-tt", tags=["Admin"])
-def trigger_tt_scraper():
-    import subprocess
-    import os
-    try:
-        scraper_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scraper", "main_scraper.py"))
-        subprocess.Popen(["python3", scraper_path, "--tt-only"])
-        return {"message": "TT Scraper triggered in background"}
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.post("/trigger-football-teams", tags=["Admin"])
-def trigger_football_team_scraper():
-    import subprocess
-    import os
-    try:
-        scraper_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scraper", "main_scraper.py"))
-        subprocess.Popen(["python3", scraper_path, "--football-only"])
-        return {"message": "Football National Team Scraper triggered in background"}
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.post("/trigger-basketball-clubs", tags=["Admin"])
-def trigger_basketball_scraper():
-    import subprocess
-    import os
-    try:
-        scraper_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "scraper", "main_scraper.py"))
-        subprocess.Popen(["python3", scraper_path, "--basketball-only"])
-        return {"message": "Basketball Club Scraper triggered in background"}
-    except Exception as e:
-        return {"error": str(e)}
 
 @app.get("/")
 def read_root():
     return {"message": "Welcome to the Tennis Player Search API"}
 
+
+# AWS Lambda entry point (backend/deploy_lambda.sh deploys it as app.main.handler).
+handler = Mangum(app, lifespan="off")
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import uvicorn
+
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

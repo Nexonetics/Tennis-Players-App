@@ -13,7 +13,7 @@ project_root = os.path.abspath(os.path.join(script_dir, '..'))
 sys.path.append(project_root)
 sys.path.append(os.path.join(project_root, 'backend'))
 
-REMOTE_DB_URL = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require"
+REMOTE_DB_URL = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 engine = create_engine(REMOTE_DB_URL)
 
 target_date_str = "2026-08-24"

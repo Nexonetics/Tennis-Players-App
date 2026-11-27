@@ -4,6 +4,7 @@ from app.models.tt_player import TableTennisPlayer, TableTennisHistoricalPlayer,
 from app.models.football_national_team import FootballNationalTeam, FootballHistoricalTeam, FootballHistoricalRanking
 from app.models.basketball_national_team import BasketballNationalTeam, BasketballHistoricalTeam, BasketballHistoricalRanking
 from app.models.basketball_club import BasketballClub
+from app.models.college_basketball import CollegeBasketballSnapshot
 
 __all__ = [
     "Base",
@@ -20,6 +21,7 @@ __all__ = [
     "BasketballHistoricalTeam",
     "BasketballHistoricalRanking",
     "BasketballClub",
+    "CollegeBasketballSnapshot",
 ]
 
 

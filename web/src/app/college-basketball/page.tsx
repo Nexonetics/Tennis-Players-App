@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, Clock, Info, Loader2, Search, AlertTriangle } from 'lucide-react';
-import { getCollegeBasketball } from '@/lib/localDataService';
+import { ChevronDown, Clock, Info, Loader2, Search, AlertTriangle, RefreshCw } from 'lucide-react';
+import { AdminAuthError, getCollegeBasketball, refreshCollegeBasketball } from '@/lib/localDataService';
 import { useSports } from '@/context/SportsContext';
 import { findRecordOddsMismatch, predictGame, type GamePrediction } from '@/lib/cbbModel';
 import { TeamLogo, describeLeans, formatOdds, formatSpread, teamName, type LeanItem } from '@/components/cbb/shared';
@@ -563,6 +563,26 @@ function StandingsView({ league }: { league: CbbLeague }) {
   );
 }
 
+// The admin password is remembered for this browser tab only, so it isn't asked on every press.
+const ADMIN_KEY_STORAGE = 'cbb-admin-key';
+
+function readAdminKey(): string {
+  try {
+    return sessionStorage.getItem(ADMIN_KEY_STORAGE) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function writeAdminKey(key: string | null) {
+  try {
+    if (key) sessionStorage.setItem(ADMIN_KEY_STORAGE, key);
+    else sessionStorage.removeItem(ADMIN_KEY_STORAGE);
+  } catch {
+    // Storage blocked: the password is simply asked again next time.
+  }
+}
+
 export default function CollegeBasketballPage() {
   const { gender, setGender } = useSports();
   const [data, setData] = useState<CollegeBasketballData | null>(null);
@@ -570,6 +590,28 @@ export default function CollegeBasketballPage() {
   const [tab, setTab] = useState<'games' | 'teams'>('games');
   // Captured once on load so renders stay pure; drives 'started' badges and 'updated X ago'.
   const [now, setNow] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshNotice, setRefreshNotice] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const handleFetchOdds = async () => {
+    const key = readAdminKey() || window.prompt('Admin password (each fetch uses Odds API credits):')?.trim();
+    if (!key) return;
+    setRefreshing(true);
+    setRefreshNotice(null);
+    try {
+      const fresh = await refreshCollegeBasketball(key);
+      writeAdminKey(key);
+      setData(fresh);
+      setNow(Date.now());
+      const left = fresh.odds_api_credits?.remaining;
+      setRefreshNotice({ ok: true, text: left != null ? `Odds updated · ${left} credits left this month` : 'Odds updated' });
+    } catch (err) {
+      if (err instanceof AdminAuthError) writeAdminKey(null);
+      setRefreshNotice({ ok: false, text: err instanceof Error ? err.message : 'Could not fetch odds' });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -590,7 +632,7 @@ export default function CollegeBasketballPage() {
   return (
     <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-6xl mx-auto pb-12">
       {/* Hero */}
-      <div className="w-full rounded-3xl overflow-hidden relative shadow-sm border border-pink-100 bg-gradient-to-r from-pink-50 via-pink-100 to-rose-50 flex items-center px-5 sm:px-10 py-5 sm:py-7">
+      <div className="w-full rounded-3xl overflow-hidden relative shadow-sm border border-pink-100 bg-gradient-to-r from-pink-50 via-pink-100 to-rose-50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-5 sm:px-10 py-5 sm:py-7">
         <div className="flex items-center gap-4 sm:gap-6">
           <div className="w-12 h-12 sm:w-16 sm:h-16 bg-[#FA2E72] rounded-full flex items-center justify-center shadow-md text-2xl sm:text-3xl text-white shrink-0">
             🏀
@@ -601,6 +643,25 @@ export default function CollegeBasketballPage() {
               NCAA lines from US sportsbooks, win–loss analysis and a predicted winner for every game.
             </p>
           </div>
+        </div>
+        <div className="flex flex-col items-start sm:items-end gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={handleFetchOdds}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 rounded-full bg-white/90 border border-pink-200 px-4 py-2 text-xs font-bold text-brand-pink-dark shadow-xs hover:bg-white transition-all cursor-pointer disabled:opacity-60 disabled:cursor-wait"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Fetching odds…' : 'Fetch latest odds'}
+          </button>
+          {refreshNotice && (
+            <span
+              role="status"
+              className={`text-[11px] font-semibold ${refreshNotice.ok ? 'text-emerald-700' : 'text-rose-700'}`}
+            >
+              {refreshNotice.text}
+            </span>
+          )}
         </div>
       </div>
 

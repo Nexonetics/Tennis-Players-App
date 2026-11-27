@@ -8,8 +8,7 @@ sys.path.append(project_root)
 
 LOCAL_SQLITE_URL = f"sqlite:///{os.path.join(project_root, 'tennis.db')}"
 BACKEND_SQLITE_URL = f"sqlite:///{os.path.join(project_root, 'backend', 'tennis.db')}"
-REMOTE_DB_URL = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&hostaddr=35.173.20.131"
-
+REMOTE_DB_URL = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 def audit_database(db_url, db_label):
     print(f"\n==================================================")
     print(f"📊 VERIFYING RANKINGS IN: {db_label}")

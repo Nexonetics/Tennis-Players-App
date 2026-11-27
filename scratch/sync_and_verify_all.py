@@ -5,8 +5,7 @@ from sqlalchemy import create_engine, text
 
 LOCAL_DB_PATH = "/home/nexonetics/nexonetics/tennis_app/tennis.db"
 BACKEND_DB_PATH = "/home/nexonetics/nexonetics/tennis_app/backend/tennis.db"
-REMOTE_DB_URL = "postgresql://neondb_owner:npg_48uqktSjVLpR@ep-damp-resonance-anwqigab.c-6.us-east-1.aws.neon.tech/neondb?sslmode=require&hostaddr=35.173.20.131"
-
+REMOTE_DB_URL = os.environ["DATABASE_URL"]  # from .env / environment; never hardcode credentials
 print("==================================================")
 print("  STEP 1: CONNECTING TO LOCAL AND REMOTE DBS")
 print("==================================================")
